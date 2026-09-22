@@ -4,20 +4,31 @@ import { APPS } from "../apps.js";
 import { ACCENT_PRESETS, applyAccentPreset } from "../accentPresets.js";
 
 function ProfileSection({ user, onUserUpdated, onToast }) {
+  const [username, setUsername] = useState(user.username);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
+  const renaming = username.trim().toLowerCase() !== user.username.toLowerCase();
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (renaming && !currentPassword) return;
     setBusy(true);
     setError(null);
     try {
-      const data = await api.updateProfile({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim() });
+      const fields = { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim() };
+      if (renaming) {
+        fields.newUsername = username.trim();
+        fields.currentPassword = currentPassword;
+      }
+      const data = await api.updateProfile(fields);
       onUserUpdated(data.user);
-      onToast("Profile updated.");
+      setCurrentPassword("");
+      onToast(renaming ? `Username changed to ${data.user.username}.` : "Profile updated.");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -27,6 +38,10 @@ function ProfileSection({ user, onUserUpdated, onToast }) {
 
   return (
     <form onSubmit={handleSubmit}>
+      <div className="field" style={{ marginBottom: 12 }}>
+        <label htmlFor="my-username">Username</label>
+        <input id="my-username" value={username} onChange={(e) => setUsername(e.target.value)} />
+      </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
         <div className="field" style={{ flex: 1 }}>
           <label htmlFor="my-first-name">First name</label>
@@ -41,6 +56,19 @@ function ProfileSection({ user, onUserUpdated, onToast }) {
         <label htmlFor="my-email">Email</label>
         <input id="my-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
+      {renaming && (
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label htmlFor="my-username-password">Current password</label>
+          <input
+            id="my-username-password"
+            type="password"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+          <span className="field-help">Required to change your username — confirms it's really you.</span>
+        </div>
+      )}
       {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
       <button className="btn btn-accent btn-sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Save profile"}</button>
     </form>

@@ -61,7 +61,11 @@ export const api = {
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
 
   // Self-service — acts on the caller only.
-  updateProfile: (fields) => request("/auth/me/update-profile", fields), // {firstName?, lastName?, email?, themeAccent?}
+  updateProfile: async (fields) => {
+    const data = await request("/auth/me/update-profile", fields); // {firstName?, lastName?, email?, themeAccent?, newUsername?, currentPassword?}
+    if (data.token) storeToken(data.token); // set when newUsername was included — keeps this session alive
+    return data;
+  },
   changePassword: async (currentPassword, newPassword) => {
     const data = await request("/auth/me/change-password", { currentPassword, newPassword });
     if (data.token) storeToken(data.token); // keep this session alive across the tokenVersion bump

@@ -75,8 +75,8 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
         </div>
         {isSelf && (
           <div className="field-help" style={{ marginBottom: 12 }}>
-            Username and role are locked for your own account — either change would sign you out mid-edit.
-            Use another admin account.
+            Role is locked for your own account — changing it would sign you out mid-edit; use another admin
+            account. To change your own username, use the My Account tab instead — it handles the re-login properly.
           </div>
         )}
         <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
