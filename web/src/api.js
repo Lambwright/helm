@@ -19,6 +19,8 @@ const ADMIN_ERROR_MESSAGES = {
   invalid_request: "Missing required fields.",
   cannot_delete_self: "You can't delete your own account.",
   cannot_archive_self: "You can't archive your own account.",
+  cannot_rename_self: "You can't rename your own account — it would sign you out mid-edit. Use another admin account.",
+  cannot_change_own_role: "You can't change your own role — it would sign you out mid-edit. Use another admin account.",
   forbidden: "Admin access required.",
   invalid_current_password: "That's not your current password.",
 };
@@ -55,7 +57,7 @@ export const api = {
   setPassword: (username, newPassword) => request("/auth/admin/set-password", { username, newPassword }),
   archiveUser: (username) => request("/auth/admin/archive-user", { username }),
   unarchiveUser: (username) => request("/auth/admin/unarchive-user", { username }),
-  updateUser: (username, fields) => request("/auth/admin/update-user", { username, ...fields }), // {firstName?, lastName?, email?, apps?}
+  updateUser: (username, fields) => request("/auth/admin/update-user", { username, ...fields }), // {newUsername?, role?, firstName?, lastName?, email?, apps?}
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
 
   // Self-service — acts on the caller only.

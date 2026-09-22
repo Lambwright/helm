@@ -7,7 +7,9 @@ import { APPS, ALL_APP_IDS } from "../apps.js";
 // auth-worker/README.md. Editing always makes that explicit going forward:
 // checking every box and saving writes the full list rather than leaving it
 // implicit, which is more auditable from the user list.
-export default function EditUserModal({ user, onClose, onSaved }) {
+export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
+  const [username, setUsername] = useState(user.username);
+  const [role, setRole] = useState(user.role);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
@@ -26,16 +28,21 @@ export default function EditUserModal({ user, onClose, onSaved }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) return;
+    if (!username.trim() || !firstName.trim() || !lastName.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      await api.updateUser(user.username, {
+      const fields = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         apps: Array.from(apps),
-      });
+      };
+      if (!isSelf) {
+        fields.newUsername = username.trim();
+        fields.role = role;
+      }
+      await api.updateUser(user.username, fields);
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -49,8 +56,33 @@ export default function EditUserModal({ user, onClose, onSaved }) {
       <form onSubmit={handleSubmit}>
         <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
           <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="edit-username">Username</label>
+            <input
+              id="edit-username"
+              autoFocus
+              value={username}
+              disabled={isSelf}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="edit-role">Role</label>
+            <select id="edit-role" value={role} disabled={isSelf} onChange={(e) => setRole(e.target.value)}>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        {isSelf && (
+          <div className="field-help" style={{ marginBottom: 12 }}>
+            Username and role are locked for your own account — either change would sign you out mid-edit.
+            Use another admin account.
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+          <div className="field" style={{ flex: 1 }}>
             <label htmlFor="edit-first-name">First name</label>
-            <input id="edit-first-name" autoFocus value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            <input id="edit-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="edit-last-name">Last name</label>

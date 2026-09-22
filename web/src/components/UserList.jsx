@@ -114,6 +114,7 @@ export default function UserList({ users, currentUsername, loading, error, onRef
       {editTarget && (
         <EditUserModal
           user={editTarget}
+          isSelf={editTarget.username.toLowerCase() === currentUsername?.toLowerCase()}
           onClose={() => setEditTarget(null)}
           onSaved={() => {
             setEditTarget(null);
