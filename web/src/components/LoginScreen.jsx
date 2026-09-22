@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { login } from "../auth.js";
+import ForgotPasswordModal from "./ForgotPasswordModal.jsx";
 
 export default function LoginScreen({ onLoggedIn }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -59,7 +61,16 @@ export default function LoginScreen({ onLoggedIn }) {
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => setShowForgot(true)}
+          style={{ marginTop: 10, width: "100%", justifyContent: "center" }}
+        >
+          Forgot password?
+        </button>
       </form>
+      {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
     </div>
   );
 }

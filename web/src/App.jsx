@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { getStoredToken, verify, logout as doLogout } from "./auth.js";
 import { api } from "./api.js";
+import { applyAccentPreset } from "./accentPresets.js";
 import Header from "./components/Header.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import UserList from "./components/UserList.jsx";
 import AuditLog from "./components/AuditLog.jsx";
+import MyAccount from "./components/MyAccount.jsx";
 import Toast from "./components/Toast.jsx";
 
-const TABS = [
+const ADMIN_TABS = [
   { key: "users", label: "Users" },
   { key: "audit", label: "Audit Log" },
+  { key: "account", label: "My Account" },
 ];
+const USER_TABS = [{ key: "account", label: "My Account" }];
 
 export default function App() {
   const [authState, setAuthState] = useState("checking"); // checking | out | in
@@ -36,7 +40,9 @@ export default function App() {
     verify(token).then((data) => {
       if (data.valid) {
         setUser(data.user);
+        if (data.user.themeAccent) applyAccentPreset(data.user.themeAccent);
         setAuthState("in");
+        setTab(data.user.role === "admin" ? "users" : "account");
       } else {
         setAuthState("out");
       }
@@ -82,12 +88,18 @@ export default function App() {
 
   function handleLoggedIn(u) {
     setUser(u);
+    if (u.themeAccent) applyAccentPreset(u.themeAccent);
     setAuthState("in");
+    setTab(u.role === "admin" ? "users" : "account");
   }
   function handleLogout() {
     doLogout();
+    applyAccentPreset(null);
     setUser(null);
     setAuthState("out");
+  }
+  function handleUserUpdated(updatedFields) {
+    setUser((prev) => ({ ...prev, ...updatedFields }));
   }
 
   if (authState === "checking") {
@@ -102,47 +114,38 @@ export default function App() {
   }
 
   const isAdmin = user?.role === "admin";
+  const tabs = isAdmin ? ADMIN_TABS : USER_TABS;
 
   return (
     <>
       <Header user={user} onLogout={handleLogout} onToast={showToast} />
       <div className="container">
-        {!isAdmin ? (
-          <div className="card">
-            <div className="card-title">Signed in</div>
-            <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>
-              You're signed in as <strong>{user.displayName || user.username}</strong>. User management and the
-              audit log need an admin account — use the "Copy token" button above if you just need a session
-              token for debugging.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="tabs">
-              {TABS.map((t) => (
-                <button
-                  key={t.key}
-                  className={`tab ${tab === t.key ? "active" : ""}`}
-                  onClick={() => setTab(t.key)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            {tab === "users" && (
-              <UserList
-                users={users}
-                currentUsername={user.username}
-                loading={loadingUsers}
-                error={usersError}
-                onRefresh={loadUsers}
-                onToast={showToast}
-              />
-            )}
-            {tab === "audit" && (
-              <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />
-            )}
-          </>
+        <div className="tabs">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              className={`tab ${tab === t.key ? "active" : ""}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {tab === "users" && isAdmin && (
+          <UserList
+            users={users}
+            currentUsername={user.username}
+            loading={loadingUsers}
+            error={usersError}
+            onRefresh={loadUsers}
+            onToast={showToast}
+          />
+        )}
+        {tab === "audit" && isAdmin && (
+          <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />
+        )}
+        {tab === "account" && (
+          <MyAccount user={user} onUserUpdated={handleUserUpdated} onToast={showToast} />
         )}
       </div>
       {toast && <Toast message={toast.message} error={toast.error} onDismiss={() => setToast(null)} />}

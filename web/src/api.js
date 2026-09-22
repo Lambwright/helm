@@ -1,4 +1,4 @@
-import { getStoredToken, clearToken } from "./auth.js";
+import { getStoredToken, storeToken, clearToken } from "./auth.js";
 
 // HELM has no backend of its own — every call goes straight to auth-worker's
 // /auth/admin/* endpoints. Same dev-proxy / prod-base split as auth.js.
@@ -20,6 +20,7 @@ const ADMIN_ERROR_MESSAGES = {
   cannot_delete_self: "You can't delete your own account.",
   cannot_archive_self: "You can't archive your own account.",
   forbidden: "Admin access required.",
+  invalid_current_password: "That's not your current password.",
 };
 
 async function request(path, body) {
@@ -49,12 +50,21 @@ async function request(path, body) {
 }
 
 export const api = {
-  listUsers: () => request("/auth/admin/list-users"), // { users: [{username, displayName, role, disabled, createdAt}] }
-  createUser: (fields) => request("/auth/admin/create-user", fields), // {username, password, displayName, role}
+  listUsers: () => request("/auth/admin/list-users"), // { users: [{username, displayName, firstName, lastName, email, role, apps, disabled, createdAt}] }
+  createUser: (fields) => request("/auth/admin/create-user", fields), // {username, password, firstName, lastName, email, role, apps}
   setPassword: (username, newPassword) => request("/auth/admin/set-password", { username, newPassword }),
   archiveUser: (username) => request("/auth/admin/archive-user", { username }),
   unarchiveUser: (username) => request("/auth/admin/unarchive-user", { username }),
+  updateUser: (username, fields) => request("/auth/admin/update-user", { username, ...fields }), // {firstName?, lastName?, email?, apps?}
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
+
+  // Self-service — acts on the caller only.
+  updateProfile: (fields) => request("/auth/me/update-profile", fields), // {firstName?, lastName?, email?, themeAccent?}
+  changePassword: async (currentPassword, newPassword) => {
+    const data = await request("/auth/me/change-password", { currentPassword, newPassword });
+    if (data.token) storeToken(data.token); // keep this session alive across the tokenVersion bump
+    return data;
+  },
 };
 
 export { UnauthorizedError };
