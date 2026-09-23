@@ -212,6 +212,52 @@ function AppearanceSection({ user, onUserUpdated, onToast }) {
   );
 }
 
+function SessionsSection({ user, onToast }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function handleConfirm() {
+    setBusy(true);
+    try {
+      await api.logoutEverywhere();
+      setConfirming(false);
+      onToast("Signed out of every other session. This one stays logged in.");
+    } catch (err) {
+      onToast(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="field-help" style={{ marginBottom: 12 }}>
+        Last login: {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "—"}
+        {user.lastLoginIp ? ` from ${user.lastLoginIp}` : ""}
+      </div>
+      {!confirming ? (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirming(true)}>
+          Sign out everywhere else
+        </button>
+      ) : (
+        <div>
+          <div className="field-help" style={{ marginBottom: 8 }}>
+            This signs out every other device/browser signed in as you. This one stays logged in. Sure?
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)} disabled={busy}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-danger btn-sm" onClick={handleConfirm} disabled={busy}>
+              {busy ? "Signing out…" : "Yes, sign out everywhere else"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MyAccount({ user, onUserUpdated, onToast }) {
   return (
     <>
@@ -222,6 +268,10 @@ export default function MyAccount({ user, onUserUpdated, onToast }) {
       <div className="card">
         <div className="card-title">Password</div>
         <PasswordSection onToast={onToast} />
+      </div>
+      <div className="card">
+        <div className="card-title">Sessions</div>
+        <SessionsSection user={user} onToast={onToast} />
       </div>
       <div className="card">
         <div className="card-title">My app access</div>

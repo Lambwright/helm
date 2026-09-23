@@ -21,6 +21,7 @@ const ADMIN_ERROR_MESSAGES = {
   cannot_archive_self: "You can't archive your own account.",
   cannot_rename_self: "You can't rename your own account — it would sign you out mid-edit. Use another admin account.",
   cannot_change_own_role: "You can't change your own role — it would sign you out mid-edit. Use another admin account.",
+  cannot_force_logout_self: "You can't force-logout your own account — use 'Sign out everywhere' in My Account instead.",
   forbidden: "Admin access required.",
   invalid_current_password: "That's not your current password.",
 };
@@ -58,6 +59,8 @@ export const api = {
   archiveUser: (username) => request("/auth/admin/archive-user", { username }),
   unarchiveUser: (username) => request("/auth/admin/unarchive-user", { username }),
   updateUser: (username, fields) => request("/auth/admin/update-user", { username, ...fields }), // {newUsername?, role?, firstName?, lastName?, email?, apps?}
+  forceLogout: (username) => request("/auth/admin/force-logout", { username }),
+  rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
 
   // Self-service — acts on the caller only.
@@ -69,6 +72,11 @@ export const api = {
   changePassword: async (currentPassword, newPassword) => {
     const data = await request("/auth/me/change-password", { currentPassword, newPassword });
     if (data.token) storeToken(data.token); // keep this session alive across the tokenVersion bump
+    return data;
+  },
+  logoutEverywhere: async () => {
+    const data = await request("/auth/me/logout-everywhere");
+    if (data.token) storeToken(data.token);
     return data;
   },
 };
