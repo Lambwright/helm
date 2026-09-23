@@ -65,10 +65,14 @@ export const api = {
 
   // Self-service — acts on the caller only.
   updateProfile: async (fields) => {
-    const data = await request("/auth/me/update-profile", fields); // {firstName?, lastName?, email?, themeAccent?, newUsername?, currentPassword?}
+    const data = await request("/auth/me/update-profile", fields); // {firstName?, lastName?, email?, newUsername?, currentPassword?}
     if (data.token) storeToken(data.token); // set when newUsername was included — keeps this session alive
     return data;
   },
+  // Patches ONE app's entry in the per-app themeAccent map, leaving every
+  // other app's choice untouched. presetId: null clears that app back to its
+  // own default.
+  setAppAccent: (appId, presetId) => request("/auth/me/update-profile", { themeAccentApp: appId, themeAccentPreset: presetId }),
   changePassword: async (currentPassword, newPassword) => {
     const data = await request("/auth/me/change-password", { currentPassword, newPassword });
     if (data.token) storeToken(data.token); // keep this session alive across the tokenVersion bump

@@ -40,7 +40,7 @@ export default function App() {
     verify(token).then((data) => {
       if (data.valid) {
         setUser(data.user);
-        if (data.user.themeAccent) applyAccentPreset(data.user.themeAccent);
+        if (data.user.themeAccent?.HELM) applyAccentPreset(data.user.themeAccent.HELM);
         setAuthState("in");
         setTab(data.user.role === "admin" ? "users" : "account");
       } else {
@@ -88,7 +88,7 @@ export default function App() {
 
   function handleLoggedIn(u) {
     setUser(u);
-    if (u.themeAccent) applyAccentPreset(u.themeAccent);
+    if (u.themeAccent?.HELM) applyAccentPreset(u.themeAccent.HELM);
     setAuthState("in");
     setTab(u.role === "admin" ? "users" : "account");
   }

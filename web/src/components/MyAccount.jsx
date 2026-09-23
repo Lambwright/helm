@@ -173,16 +173,22 @@ function AppAccessSection({ user }) {
   );
 }
 
-function AppearanceSection({ user, onUserUpdated, onToast }) {
-  const [busy, setBusy] = useState(null); // preset id currently saving
+// A color per app, not one global color — Ben can have HELM tungsten and
+// TALLY crimson at the same time. Each row saves independently; only HELM's
+// own row also applies live (picking a color for TALLY shouldn't repaint
+// HELM's own chrome — it takes effect next time you're actually in TALLY).
+const THEMEABLE_APPS = [{ id: "HELM", label: "HELM" }, ...APPS];
+
+function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {
+  const [busy, setBusy] = useState(null); // preset id currently saving, or "clear"
 
   async function choose(presetId) {
-    setBusy(presetId);
-    applyAccentPreset(presetId);
+    setBusy(presetId || "clear");
+    if (appId === "HELM") applyAccentPreset(presetId);
     try {
-      const data = await api.updateProfile({ themeAccent: presetId });
+      const data = await api.setAppAccent(appId, presetId);
       onUserUpdated(data.user);
-      onToast("Appearance updated.");
+      onToast(presetId ? `${label} accent updated.` : `${label} reset to its default color.`);
     } catch (err) {
       onToast(err.message, true);
     } finally {
@@ -191,22 +197,57 @@ function AppearanceSection({ user, onUserUpdated, onToast }) {
   }
 
   return (
-    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-      {ACCENT_PRESETS.map((preset) => (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
-          key={preset.id}
           type="button"
           className="btn btn-ghost btn-sm"
-          disabled={busy === preset.id}
-          onClick={() => choose(preset.id)}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            borderColor: user.themeAccent === preset.id ? preset.accent : undefined,
-          }}
+          disabled={busy !== null}
+          onClick={() => choose(null)}
+          style={{ borderColor: !current ? "var(--text-tertiary)" : undefined }}
+          title="Use this app's own default color"
         >
-          <span style={{ width: 12, height: 12, borderRadius: "50%", background: preset.accent, display: "inline-block" }} />
-          {preset.label}
+          Default
         </button>
+        {ACCENT_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={busy !== null}
+            onClick={() => choose(preset.id)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              borderColor: current === preset.id ? preset.accent : undefined,
+            }}
+          >
+            <span style={{ width: 11, height: 11, borderRadius: "50%", background: preset.accent, display: "inline-block" }} />
+            {preset.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AppearanceSection({ user, onUserUpdated, onToast }) {
+  const themeAccent = user.themeAccent || {};
+  return (
+    <div>
+      <div className="field-help" style={{ marginBottom: 14 }}>
+        A color per app — pick one for HELM, a different one for TALLY, and so on. Nothing here affects
+        anyone else's account.
+      </div>
+      {THEMEABLE_APPS.map((app) => (
+        <AppearanceRow
+          key={app.id}
+          appId={app.id}
+          label={app.label}
+          current={themeAccent[app.id] || null}
+          onUserUpdated={onUserUpdated}
+          onToast={onToast}
+        />
       ))}
     </div>
   );
