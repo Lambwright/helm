@@ -8,6 +8,7 @@ export const APPS = [
   { id: "INTAKE", label: "INTAKE", url: "https://lambwright.github.io/scout-intake/" },
   { id: "TALLY", label: "TALLY", url: "https://lambwright.github.io/tally/" },
   { id: "HANDOFF", label: "HANDOFF", url: "https://lambwright.github.io/handoff/" },
+  { id: "CRM", label: "CRM", url: "https://lambwright.github.io/crm/" },
 ];
 
 export const ALL_APP_IDS = APPS.map((a) => a.id);
