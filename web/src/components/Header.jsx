@@ -17,6 +17,7 @@ function appLinks() {
     { name: "TALLY", url: "https://lambwright.github.io/tally/" },
     { name: "HANDOFF", url: "https://lambwright.github.io/handoff/" },
     { name: "HELM", url: "https://lambwright.github.io/helm/", current: true },
+    { name: "CRM", url: "https://lambwright.github.io/crm/" },
   ];
 }
 
