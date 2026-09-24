@@ -4,12 +4,14 @@ import { getStoredToken } from "../auth.js";
 // Same suite switcher every other app carries (ported from TALLY, itself from
 // scout-intake's). LEDGER is left out on purpose — its Einbau ID status is
 // still unconfirmed as of this writing (see kickoff prompt); add it once that's
-// settled rather than guessing.
-const PUNCH_OWNER_USERNAME = "ben";
-function appLinks(user) {
-  const isOwner = user && String(user.username).toLowerCase() === PUNCH_OWNER_USERNAME;
+// settled rather than guessing. PUNCH used to be Ben-only so this gated the link
+// to him (comingSoon: !isOwner) — stale now that PUNCH has real multi-user
+// access with its own backend auth and a restricted view for non-admins; the
+// link is live for everyone here, and PUNCH's own login enforces access on
+// click-through.
+function appLinks() {
   return [
-    { name: "PUNCH", url: "https://lambwright.github.io/PUNCH/", comingSoon: !isOwner },
+    { name: "PUNCH", url: "https://lambwright.github.io/PUNCH/" },
     { name: "SCOUT", url: "https://lambwright.github.io/scout-addin/app.html" },
     { name: "INTAKE", url: "https://lambwright.github.io/scout-intake/" },
     { name: "TALLY", url: "https://lambwright.github.io/tally/" },
@@ -59,7 +61,7 @@ export default function Header({ user, onLogout, onToast }) {
         <span className="header-brand-tag">An Einbau Product</span>
         {open && (
           <div className="app-switcher-menu">
-            {appLinks(user).map((app) =>
+            {appLinks().map((app) =>
               app.comingSoon ? (
                 <div className="app-switcher-item disabled" key={app.name}>
                   {app.name}<span className="app-switcher-soon">COMING SOON</span>
