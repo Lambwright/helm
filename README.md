@@ -81,3 +81,12 @@ Still open, not needed to ship v1:
   should own at all (each app layers its own authorization differently today
   — PUNCH: hardcoded username, TALLY: `ALLOWED_USERS` var, HANDOFF: its own
   roled `users` table). Real future scope, not a v1 guess.
+
+## Nice-to-haves (not bugs)
+
+- **Cross-tab session sync.** Every suite app reads the shared
+  `einbau_id_token` from localStorage once, on page load. A tab left open
+  overnight won't notice that you logged out or back in from another tab
+  until you reload it. A `window.addEventListener("storage", …)` that
+  re-runs `verify()` when `einbau_id_token` changes would fix that. Worth
+  doing in every app at once, not HELM alone.
