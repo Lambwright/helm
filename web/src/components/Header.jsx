@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { getStoredToken } from "../auth.js";
 
 // Same suite switcher every other app carries (ported from TALLY, itself from
-// scout-intake's). LEDGER is left out on purpose — its Einbau ID status is
-// still unconfirmed as of this writing (see kickoff prompt); add it once that's
-// settled rather than guessing. PUNCH used to be Ben-only so this gated the link
+// scout-intake's). LEDGER's company portfolio page is on Einbau ID as of
+// 2026-09-25 (access = the LEDGER app on a user). PUNCH used to be Ben-only so this gated the link
 // to him (comingSoon: !isOwner) — stale now that PUNCH has real multi-user
 // access with its own backend auth and a restricted view for non-admins; the
 // link is live for everyone here, and PUNCH's own login enforces access on
@@ -16,6 +15,7 @@ function appLinks() {
     { name: "INTAKE", url: "https://lambwright.github.io/scout-intake/" },
     { name: "TALLY", url: "https://lambwright.github.io/tally/" },
     { name: "HANDOFF", url: "https://lambwright.github.io/handoff/" },
+    { name: "LEDGER", url: "https://lambwright.github.io/ledger/" },
     { name: "HELM", url: "https://lambwright.github.io/helm/", current: true },
     { name: "CRM", url: "https://lambwright.github.io/crm/" },
   ];

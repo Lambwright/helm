@@ -8,6 +8,7 @@ export const APPS = [
   { id: "INTAKE", label: "INTAKE", url: "https://lambwright.github.io/scout-intake/" },
   { id: "TALLY", label: "TALLY", url: "https://lambwright.github.io/tally/" },
   { id: "HANDOFF", label: "HANDOFF", url: "https://lambwright.github.io/handoff/" },
+  { id: "LEDGER", label: "LEDGER", url: "https://lambwright.github.io/ledger/" },
   { id: "CRM", label: "CRM", url: "https://lambwright.github.io/crm/" },
 ];
 
