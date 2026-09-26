@@ -7,11 +7,13 @@ import LoginScreen from "./components/LoginScreen.jsx";
 import UserList from "./components/UserList.jsx";
 import AuditLog from "./components/AuditLog.jsx";
 import MyAccount from "./components/MyAccount.jsx";
+import CrmOptions from "./components/CrmOptions.jsx";
 import Toast from "./components/Toast.jsx";
 
 const ADMIN_TABS = [
   { key: "users", label: "Users" },
   { key: "audit", label: "Audit Log" },
+  { key: "crm-options", label: "CRM Options" },
   { key: "account", label: "My Account" },
 ];
 const USER_TABS = [{ key: "account", label: "My Account" }];
@@ -82,7 +84,7 @@ export default function App() {
   }, [authState, user]);
 
   useEffect(() => {
-    if (tab === "users") loadUsers();
+    if (tab === "users" || tab === "crm-options") loadUsers();
     if (tab === "audit") loadAudit();
   }, [tab, loadUsers, loadAudit]);
 
@@ -149,6 +151,7 @@ export default function App() {
         {tab === "audit" && isAdmin && (
           <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />
         )}
+        {tab === "crm-options" && isAdmin && <CrmOptions users={users} onToast={showToast} />}
         {tab === "account" && (
           <MyAccount user={user} onUserUpdated={handleUserUpdated} onToast={showToast} />
         )}
