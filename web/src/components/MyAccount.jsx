@@ -174,7 +174,12 @@ function AppAccessSection({ user }) {
 // TALLY crimson at the same time. Each row saves independently; only HELM's
 // own row also applies live (picking a color for TALLY shouldn't repaint
 // HELM's own chrome — it takes effect next time you're actually in TALLY).
-const THEMEABLE_APPS = [{ id: "HELM", label: "HELM" }, ...APPS];
+// Only apps this user can actually open, HELM last — same list and order as
+// the app switcher.
+function themeableApps(user) {
+  const granted = (user.apps || []).map((a) => String(a).toUpperCase());
+  return [...APPS.filter((app) => granted.includes(app.id)), { id: "HELM", label: "HELM" }];
+}
 
 function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {
   const [busy, setBusy] = useState(null); // preset id currently saving, or "clear"
@@ -236,7 +241,7 @@ function AppearanceSection({ user, onUserUpdated, onToast }) {
         A color per app — pick one for HELM, a different one for TALLY, and so on. Nothing here affects
         anyone else's account.
       </div>
-      {THEMEABLE_APPS.map((app) => (
+      {themeableApps(user).map((app) => (
         <AppearanceRow
           key={app.id}
           appId={app.id}
