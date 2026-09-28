@@ -148,13 +148,10 @@ function PasswordSection({ onToast }) {
 }
 
 function AppAccessSection({ user }) {
-  const accessible = user.apps
-    ? APPS.filter((app) => user.apps.includes(app.id))
-    : APPS;
+  const accessible = APPS.filter((app) => (user.apps || []).includes(app.id));
 
   return (
     <div>
-      {!user.apps && <div className="field-help" style={{ marginBottom: 10 }}>Full access — no restrictions set.</div>}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {accessible.length === 0 ? (
           <span className="field-help">No app access granted yet.</span>

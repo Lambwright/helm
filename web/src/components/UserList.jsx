@@ -26,8 +26,7 @@ function formatDateTime(iso) {
 }
 
 function appsSummary(apps) {
-  if (!apps) return "All";
-  if (apps.length === 0) return "None";
+  if (!apps || apps.length === 0) return "None";
   return apps.join(", ");
 }
 

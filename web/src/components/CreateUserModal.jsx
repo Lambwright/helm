@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Modal from "./Modal.jsx";
 import { api } from "../api.js";
-import { APPS, ALL_APP_IDS } from "../apps.js";
+import { APPS } from "../apps.js";
 
 export default function CreateUserModal({ onClose, onCreated }) {
   const [username, setUsername] = useState("");
@@ -10,7 +10,7 @@ export default function CreateUserModal({ onClose, onCreated }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
-  const [apps, setApps] = useState(new Set(ALL_APP_IDS));
+  const [apps, setApps] = useState(new Set());
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -95,6 +95,11 @@ export default function CreateUserModal({ onClose, onCreated }) {
               </label>
             ))}
           </div>
+          {apps.size === 0 && role !== "admin" && (
+            <span className="field-help" style={{ color: "var(--yellow)" }}>
+              With no apps ticked, this person can't sign in at all.
+            </span>
+          )}
         </div>
         {error && <div className="login-error">{error}</div>}
         <div className="modal-actions">

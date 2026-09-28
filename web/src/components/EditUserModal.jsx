@@ -1,19 +1,17 @@
 import { useState } from "react";
 import Modal from "./Modal.jsx";
 import { api } from "../api.js";
-import { APPS, ALL_APP_IDS } from "../apps.js";
+import { APPS } from "../apps.js";
 
-// `user.apps === undefined` means unrestricted (every app) — see
-// auth-worker/README.md. Editing always makes that explicit going forward:
-// checking every box and saving writes the full list rather than leaving it
-// implicit, which is more auditable from the user list.
+// App access fails closed: unticked everywhere = no access, and a non-admin
+// with nothing ticked can't sign in at all (see auth-worker/README.md).
 export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
   const [username, setUsername] = useState(user.username);
   const [role, setRole] = useState(user.role);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
-  const [apps, setApps] = useState(new Set(user.apps || ALL_APP_IDS));
+  const [apps, setApps] = useState(new Set(user.apps || []));
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -103,9 +101,11 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
               </label>
             ))}
           </div>
-          <span className="field-help">
-            Note: apps enforce this themselves on their own schedule — some may not check it yet.
-          </span>
+          {apps.size === 0 && role !== "admin" && (
+            <span className="field-help" style={{ color: "var(--yellow)" }}>
+              With no apps ticked, this person can't sign in at all.
+            </span>
+          )}
         </div>
         {error && <div className="login-error">{error}</div>}
         <div className="modal-actions">
