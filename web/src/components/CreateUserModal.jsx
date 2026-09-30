@@ -1,7 +1,8 @@
 import { useState } from "react";
 import Modal from "./Modal.jsx";
 import { api } from "../api.js";
-import { APPS } from "../apps.js";
+import { prunedAppRoles } from "../apps.js";
+import AppAccessPicker from "./AppAccessPicker.jsx";
 
 export default function CreateUserModal({ onClose, onCreated }) {
   const [username, setUsername] = useState("");
@@ -11,6 +12,7 @@ export default function CreateUserModal({ onClose, onCreated }) {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [apps, setApps] = useState(new Set());
+  const [appRoles, setAppRoles] = useState({});
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -37,6 +39,7 @@ export default function CreateUserModal({ onClose, onCreated }) {
         password,
         role,
         apps: Array.from(apps),
+        appRoles: prunedAppRoles(appRoles, apps),
       });
       onCreated();
     } catch (err) {
@@ -85,22 +88,13 @@ export default function CreateUserModal({ onClose, onCreated }) {
             <option value="admin">Admin</option>
           </select>
         </div>
-        <div className="field" style={{ marginBottom: 4 }}>
-          <label>App access</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {APPS.map((app) => (
-              <label key={app.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 400 }}>
-                <input type="checkbox" checked={apps.has(app.id)} onChange={() => toggleApp(app.id)} />
-                {app.label}
-              </label>
-            ))}
-          </div>
-          {apps.size === 0 && role !== "admin" && (
-            <span className="field-help" style={{ color: "var(--yellow)" }}>
-              With no apps ticked, this person can't sign in at all.
-            </span>
-          )}
-        </div>
+        <AppAccessPicker
+          apps={apps}
+          onToggle={toggleApp}
+          appRoles={appRoles}
+          onRoleChange={(appId, roleId) => setAppRoles((prev) => ({ ...prev, [appId]: roleId }))}
+          warnNoApps={apps.size === 0 && role !== "admin"}
+        />
         {error && <div className="login-error">{error}</div>}
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} disabled={busy}>Cancel</button>

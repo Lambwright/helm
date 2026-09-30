@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api.js";
+import { roleLabel } from "../apps.js";
 import CreateUserModal from "./CreateUserModal.jsx";
 import EditUserModal from "./EditUserModal.jsx";
 import SetPasswordModal from "./SetPasswordModal.jsx";
@@ -25,9 +26,9 @@ function formatDateTime(iso) {
   }
 }
 
-function appsSummary(apps) {
+function appsSummary(apps, appRoles) {
   if (!apps || apps.length === 0) return "None";
-  return apps.join(", ");
+  return apps.map((id) => (appRoles?.[id] ? `${id} (${roleLabel(id, appRoles[id])})` : id)).join(", ");
 }
 
 export default function UserList({ users, currentUsername, loading, error, onRefresh, onToast }) {
@@ -96,7 +97,7 @@ export default function UserList({ users, currentUsername, loading, error, onRef
                   <td>{u.displayName}</td>
                   <td className="mono">{u.email || "—"}</td>
                   <td><span className={`badge badge-${u.role}`}>{u.role}</span></td>
-                  <td className="mono">{appsSummary(u.apps)}</td>
+                  <td className="mono">{appsSummary(u.apps, u.appRoles)}</td>
                   <td>
                     <span className={`badge ${u.disabled ? "badge-archived" : "badge-active"}`}>
                       {u.disabled ? "Archived" : "Active"}
