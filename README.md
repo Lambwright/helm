@@ -82,6 +82,23 @@ Still open, not needed to ship v1:
   — PUNCH: hardcoded username, TALLY: `ALLOWED_USERS` var, HANDOFF: its own
   roled `users` table). Real future scope, not a v1 guess.
 
+## Coming change: Einbau ID role matrix (agreed 2026-09-30, not built yet)
+
+HELM will stop being "tick apps per person" and become the home of the role
+matrix. See `docs/permissions-matrix.xlsx` (master copy) and auth-worker's
+README for the full model. In short:
+
+- Everyone gets a default role (Super Admin, Admin, Estimator, Project Manager,
+  Project Coordinator, CRM, Accounting, Logistics), plus optional per-app role
+  overrides. New users default to Project Manager.
+- A Super Admin-only matrix editor decides what each role gets in each app.
+- Only the Super Admin (Ben) manages users, roles, overrides and the matrix.
+  Other admins lose HELM user management; "Admin" becomes a job role.
+- The per-person app checkboxes and LEDGER role dropdown in the user editor
+  are replaced by a role picker plus per-app overrides.
+
+Nothing changes until every app session has weighed in and Ben says go.
+
 ## Nice-to-haves (not bugs)
 
 - **Cross-tab session sync.** Every suite app reads the shared
