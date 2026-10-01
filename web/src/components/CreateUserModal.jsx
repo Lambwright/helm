@@ -1,23 +1,23 @@
 import { useState } from "react";
 import Modal from "./Modal.jsx";
 import { api } from "../api.js";
-import { prunedAppRoles } from "../apps.js";
-import AppAccessPicker from "./AppAccessPicker.jsx";
+import { DEFAULT_JOB_ROLE } from "../apps.js";
+import RoleAccessEditor from "./RoleAccessEditor.jsx";
 
-export default function CreateUserModal({ onClose, onCreated }) {
+export default function CreateUserModal({ matrix, onClose, onCreated }) {
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("user");
-  const [apps, setApps] = useState(new Set());
-  const [appRoles, setAppRoles] = useState({});
+  const [jobRole, setJobRole] = useState(DEFAULT_JOB_ROLE);
+  const [overrides, setOverrides] = useState({});
+  const [legacyApps, setLegacyApps] = useState(new Set());
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  function toggleApp(id) {
-    setApps((prev) => {
+  function toggleLegacy(id) {
+    setLegacyApps((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -37,9 +37,9 @@ export default function CreateUserModal({ onClose, onCreated }) {
         lastName: lastName.trim(),
         email: email.trim(),
         password,
-        role,
-        apps: Array.from(apps),
-        appRoles: prunedAppRoles(appRoles, apps),
+        jobRole,
+        roleOverrides: Object.fromEntries(Object.entries(overrides).filter(([, r]) => r)),
+        apps: Array.from(legacyApps),
       });
       onCreated();
     } catch (err) {
@@ -72,28 +72,18 @@ export default function CreateUserModal({ onClose, onCreated }) {
         </div>
         <div className="field" style={{ marginBottom: 12 }}>
           <label htmlFor="new-password">Temporary password</label>
-          <input
-            id="new-password"
-            type="text"
-            autoComplete="off"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <input id="new-password" type="text" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
           <span className="field-help">They can't reset it themselves yet — hand this off directly.</span>
         </div>
-        <div className="field" style={{ marginBottom: 12 }}>
-          <label htmlFor="new-role">Role</label>
-          <select id="new-role" value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        <AppAccessPicker
-          apps={apps}
-          onToggle={toggleApp}
-          appRoles={appRoles}
-          onRoleChange={(appId, roleId) => setAppRoles((prev) => ({ ...prev, [appId]: roleId }))}
-          warnNoApps={apps.size === 0 && role !== "admin"}
+        <RoleAccessEditor
+          matrix={matrix}
+          jobRole={jobRole}
+          onJobRoleChange={setJobRole}
+          overrides={overrides}
+          onOverrideChange={(appId, roleId) => setOverrides((prev) => ({ ...prev, [appId]: roleId }))}
+          legacyApps={legacyApps}
+          onLegacyToggle={toggleLegacy}
+          locked={false}
         />
         {error && <div className="login-error">{error}</div>}
         <div className="modal-actions">

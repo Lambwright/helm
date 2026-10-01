@@ -1,24 +1,23 @@
 import { useState } from "react";
 import Modal from "./Modal.jsx";
 import { api } from "../api.js";
-import { prunedAppRoles } from "../apps.js";
-import AppAccessPicker from "./AppAccessPicker.jsx";
+import { SUPER_ADMIN } from "../apps.js";
+import RoleAccessEditor from "./RoleAccessEditor.jsx";
 
-// App access fails closed: unticked everywhere = no access, and a non-admin
-// with nothing ticked can't sign in at all (see auth-worker/README.md).
-export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
+export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved }) {
   const [username, setUsername] = useState(user.username);
-  const [role, setRole] = useState(user.role);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
-  const [apps, setApps] = useState(new Set(user.apps || []));
-  const [appRoles, setAppRoles] = useState(user.appRoles || {});
+  const [jobRole, setJobRole] = useState(user.jobRole || "project_manager");
+  const [overrides, setOverrides] = useState(user.roleOverrides || {});
+  const [legacyApps, setLegacyApps] = useState(new Set(user.legacyApps || []));
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const isSuperAdmin = user.jobRole === SUPER_ADMIN;
 
-  function toggleApp(id) {
-    setApps((prev) => {
+  function toggleLegacy(id) {
+    setLegacyApps((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -36,13 +35,13 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        apps: Array.from(apps),
-        appRoles: prunedAppRoles(appRoles, apps),
+        apps: Array.from(legacyApps),
       };
-      if (!isSelf) {
-        fields.newUsername = username.trim();
-        fields.role = role;
+      if (!isSuperAdmin) {
+        fields.jobRole = jobRole;
+        fields.roleOverrides = Object.fromEntries(Object.entries(overrides).filter(([, r]) => r));
       }
+      if (!isSelf) fields.newUsername = username.trim();
       await api.updateUser(user.username, fields);
       onSaved();
     } catch (err) {
@@ -55,31 +54,11 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
   return (
     <Modal title={`Edit — ${user.username}`} onClose={onClose}>
       <form onSubmit={handleSubmit}>
-        <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="edit-username">Username</label>
-            <input
-              id="edit-username"
-              autoFocus
-              value={username}
-              disabled={isSelf}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="edit-role">Role</label>
-            <select id="edit-role" value={role} disabled={isSelf} onChange={(e) => setRole(e.target.value)}>
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label htmlFor="edit-username">Username</label>
+          <input id="edit-username" autoFocus value={username} disabled={isSelf} onChange={(e) => setUsername(e.target.value)} />
+          {isSelf && <span className="field-help">Change your own username from My Account — it handles the re-login properly.</span>}
         </div>
-        {isSelf && (
-          <div className="field-help" style={{ marginBottom: 12 }}>
-            Role is locked for your own account — changing it would sign you out mid-edit; use another admin
-            account. To change your own username, use the My Account tab instead — it handles the re-login properly.
-          </div>
-        )}
         <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="edit-first-name">First name</label>
@@ -94,12 +73,15 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
           <label htmlFor="edit-email">Email</label>
           <input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
-        <AppAccessPicker
-          apps={apps}
-          onToggle={toggleApp}
-          appRoles={appRoles}
-          onRoleChange={(appId, roleId) => setAppRoles((prev) => ({ ...prev, [appId]: roleId }))}
-          warnNoApps={apps.size === 0 && role !== "admin"}
+        <RoleAccessEditor
+          matrix={matrix}
+          jobRole={isSuperAdmin ? SUPER_ADMIN : jobRole}
+          onJobRoleChange={setJobRole}
+          overrides={overrides}
+          onOverrideChange={(appId, roleId) => setOverrides((prev) => ({ ...prev, [appId]: roleId }))}
+          legacyApps={legacyApps}
+          onLegacyToggle={toggleLegacy}
+          locked={isSuperAdmin}
         />
         {error && <div className="login-error">{error}</div>}
         <div className="modal-actions">

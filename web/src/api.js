@@ -24,6 +24,10 @@ const ADMIN_ERROR_MESSAGES = {
   cannot_force_logout_self: "You can't force-logout your own account — use 'Sign out everywhere' in My Account instead.",
   forbidden: "Admin access required.",
   invalid_current_password: "That's not your current password.",
+  invalid_job_role: "That isn't a valid role.",
+  invalid_role_override: "One of the per-app overrides isn't a valid role.",
+  cannot_change_super_admin_role: "The Super Admin's role can't be changed.",
+  invalid_matrix: "The matrix has an invalid cell.",
 };
 
 async function request(path, body) {
@@ -53,8 +57,11 @@ async function request(path, body) {
 }
 
 export const api = {
-  listUsers: () => request("/auth/admin/list-users"), // { users: [{username, displayName, firstName, lastName, email, role, apps, disabled, createdAt}] }
-  createUser: (fields) => request("/auth/admin/create-user", fields), // {username, password, firstName, lastName, email, role, apps}
+  // Every /auth/admin/* call is Super Admin only.
+  listUsers: () => request("/auth/admin/list-users"), // { users: [{...publicUser, jobRole, roleOverrides, legacyApps, legacyAppRoles, matrixPreview, disabled, createdAt}] }
+  createUser: (fields) => request("/auth/admin/create-user", fields), // {username, password, firstName, lastName, email, jobRole, roleOverrides, apps}
+  getMatrix: () => request("/auth/admin/get-matrix"), // { matrix: {apps, cells, live, updatedAt, updatedBy} | null, jobRoles }
+  setMatrix: (matrix) => request("/auth/admin/set-matrix", { matrix }), // { ok, matrix }
   setPassword: (username, newPassword) => request("/auth/admin/set-password", { username, newPassword }),
   archiveUser: (username) => request("/auth/admin/archive-user", { username }),
   unarchiveUser: (username) => request("/auth/admin/unarchive-user", { username }),

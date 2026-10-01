@@ -8,10 +8,15 @@ import UserList from "./components/UserList.jsx";
 import AuditLog from "./components/AuditLog.jsx";
 import MyAccount from "./components/MyAccount.jsx";
 import CrmOptions from "./components/CrmOptions.jsx";
+import MatrixEditor from "./components/MatrixEditor.jsx";
 import Toast from "./components/Toast.jsx";
+import { SUPER_ADMIN } from "./apps.js";
 
+// Everything except My Account is Super Admin only (Ben) — see the role matrix
+// plan in auth-worker/README.md. auth-worker enforces this; hiding tabs is UI only.
 const ADMIN_TABS = [
   { key: "users", label: "Users" },
+  { key: "matrix", label: "Role Matrix" },
   { key: "audit", label: "Audit Log" },
   { key: "crm-options", label: "CRM Options" },
   { key: "account", label: "My Account" },
@@ -26,6 +31,8 @@ export default function App() {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [usersError, setUsersError] = useState(null);
+
+  const [matrix, setMatrix] = useState(null);
 
   const [auditEntries, setAuditEntries] = useState([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
@@ -44,7 +51,7 @@ export default function App() {
         setUser(data.user);
         if (data.user.themeAccent?.HELM) applyAccentPreset(data.user.themeAccent.HELM);
         setAuthState("in");
-        setTab(data.user.role === "admin" ? "users" : "account");
+        setTab(data.user.jobRole === SUPER_ADMIN ? "users" : "account");
       } else {
         setAuthState("out");
       }
@@ -55,13 +62,17 @@ export default function App() {
     setToast({ message, error });
   }, []);
 
+  // Users and the matrix load together: the user list and editors need the
+  // matrix to show levels and previews.
   const loadUsers = useCallback(() => {
-    if (authState !== "in" || user?.role !== "admin") return;
+    if (authState !== "in" || user?.jobRole !== SUPER_ADMIN) return;
     setLoadingUsers(true);
     setUsersError(null);
-    api
-      .listUsers()
-      .then((data) => setUsers(data.users || []))
+    Promise.all([api.listUsers(), api.getMatrix()])
+      .then(([data, m]) => {
+        setUsers(data.users || []);
+        setMatrix(m.matrix || null);
+      })
       .catch((e) => {
         if (e.unauthorized) handleLogout();
         else setUsersError(e.message);
@@ -70,7 +81,7 @@ export default function App() {
   }, [authState, user]);
 
   const loadAudit = useCallback(() => {
-    if (authState !== "in" || user?.role !== "admin") return;
+    if (authState !== "in" || user?.jobRole !== SUPER_ADMIN) return;
     setLoadingAudit(true);
     setAuditError(null);
     api
@@ -84,7 +95,7 @@ export default function App() {
   }, [authState, user]);
 
   useEffect(() => {
-    if (tab === "users" || tab === "crm-options") loadUsers();
+    if (tab === "users" || tab === "crm-options" || tab === "matrix") loadUsers();
     if (tab === "audit") loadAudit();
   }, [tab, loadUsers, loadAudit]);
 
@@ -92,7 +103,7 @@ export default function App() {
     setUser(u);
     if (u.themeAccent?.HELM) applyAccentPreset(u.themeAccent.HELM);
     setAuthState("in");
-    setTab(u.role === "admin" ? "users" : "account");
+    setTab(u.jobRole === SUPER_ADMIN ? "users" : "account");
   }
   // The ONLY function allowed to clear a session — the logout button and
   // every "the server just told us this token is dead" catch block (401 from
@@ -120,7 +131,7 @@ export default function App() {
     return <LoginScreen onLoggedIn={handleLoggedIn} />;
   }
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.jobRole === SUPER_ADMIN;
   const tabs = isAdmin ? ADMIN_TABS : USER_TABS;
 
   return (
@@ -141,12 +152,26 @@ export default function App() {
         {tab === "users" && isAdmin && (
           <UserList
             users={users}
+            matrix={matrix}
             currentUsername={user.username}
             loading={loadingUsers}
             error={usersError}
             onRefresh={loadUsers}
             onToast={showToast}
           />
+        )}
+        {tab === "matrix" && isAdmin && (
+          loadingUsers && !matrix ? (
+            <div className="card"><div className="empty-state">Loading…</div></div>
+          ) : (
+            <MatrixEditor
+              key={matrix?.updatedAt || "none"}
+              matrix={matrix}
+              users={users}
+              onSaved={() => loadUsers()}
+              onToast={showToast}
+            />
+          )
         )}
         {tab === "audit" && isAdmin && (
           <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />

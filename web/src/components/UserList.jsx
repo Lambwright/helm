@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../api.js";
-import { roleLabel } from "../apps.js";
+import { jobRoleLabel, levelLabel, NO_ACCESS } from "../apps.js";
 import CreateUserModal from "./CreateUserModal.jsx";
 import EditUserModal from "./EditUserModal.jsx";
 import SetPasswordModal from "./SetPasswordModal.jsx";
@@ -26,12 +26,18 @@ function formatDateTime(iso) {
   }
 }
 
-function appsSummary(apps, appRoles) {
-  if (!apps || apps.length === 0) return "None";
-  return apps.map((id) => (appRoles?.[id] ? `${id} (${roleLabel(id, appRoles[id])})` : id)).join(", ");
+// What they can actually open right now, with the level — e.g. "TALLY: Submitter".
+// Apps not yet on the role matrix just say "access".
+function accessSummary(u, matrix) {
+  const granted = Object.entries(u.appRoles || {}).filter(([, level]) => level && level !== NO_ACCESS);
+  if (!granted.length) return "None";
+  return granted.map(([app, level]) => {
+    const overridden = matrix?.live?.[app] && u.roleOverrides?.[app];
+    return `${app}: ${levelLabel(matrix, app, level)}${overridden ? "*" : ""}`;
+  }).join(", ");
 }
 
-export default function UserList({ users, currentUsername, loading, error, onRefresh, onToast }) {
+export default function UserList({ users, matrix, currentUsername, loading, error, onRefresh, onToast }) {
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState(null); // user object
   const [passwordTarget, setPasswordTarget] = useState(null); // username
@@ -80,8 +86,8 @@ export default function UserList({ users, currentUsername, loading, error, onRef
               <th>Username</th>
               <th>Name</th>
               <th>Email</th>
-              <th>Role</th>
-              <th>Apps</th>
+              <th>Job role</th>
+              <th>Access now</th>
               <th>Status</th>
               <th>Last login</th>
               <th>Created</th>
@@ -96,8 +102,8 @@ export default function UserList({ users, currentUsername, loading, error, onRef
                   <td className="mono">{u.username}</td>
                   <td>{u.displayName}</td>
                   <td className="mono">{u.email || "—"}</td>
-                  <td><span className={`badge badge-${u.role}`}>{u.role}</span></td>
-                  <td className="mono">{appsSummary(u.apps, u.appRoles)}</td>
+                  <td>{jobRoleLabel(u.jobRole)}</td>
+                  <td className="mono" style={{ fontSize: 11 }}>{accessSummary(u, matrix)}</td>
                   <td>
                     <span className={`badge ${u.disabled ? "badge-archived" : "badge-active"}`}>
                       {u.disabled ? "Archived" : "Active"}
@@ -152,9 +158,13 @@ export default function UserList({ users, currentUsername, loading, error, onRef
           </tbody>
         </table>
       )}
+      {!loading && users.length > 0 && (
+        <div className="field-help" style={{ marginTop: 8 }}>* = per-app override. Apps not yet switched to the role matrix show as "Access".</div>
+      )}
 
       {showCreate && (
         <CreateUserModal
+          matrix={matrix}
           onClose={() => setShowCreate(false)}
           onCreated={() => {
             setShowCreate(false);
@@ -166,6 +176,7 @@ export default function UserList({ users, currentUsername, loading, error, onRef
       {editTarget && (
         <EditUserModal
           user={editTarget}
+          matrix={matrix}
           isSelf={editTarget.username.toLowerCase() === currentUsername?.toLowerCase()}
           onClose={() => setEditTarget(null)}
           onSaved={() => {

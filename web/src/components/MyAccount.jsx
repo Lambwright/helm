@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../api.js";
-import { APPS, roleLabel } from "../apps.js";
+import { APPS, levelLabel, jobRoleLabel } from "../apps.js";
 import { ACCENT_PRESETS, applyAccentPreset } from "../accentPresets.js";
 
 function ProfileSection({ user, onUserUpdated, onToast }) {
@@ -159,13 +159,13 @@ function AppAccessSection({ user }) {
           accessible.map((app) => (
             <a key={app.id} className="badge badge-active" href={app.url} style={{ textDecoration: "none" }}>
               {app.label}
-              {user.appRoles?.[app.id] ? ` · ${roleLabel(app.id, user.appRoles[app.id])}` : ""}
+              {user.appRoles?.[app.id] && user.appRoles[app.id] !== "access" ? ` · ${levelLabel(null, app.id, user.appRoles[app.id])}` : ""}
             </a>
           ))
         )}
       </div>
       <span className="field-help" style={{ display: "block", marginTop: 10 }}>
-        Read-only — ask an admin in HELM to change what you can access.
+        {user.jobRole ? `Your role: ${jobRoleLabel(user.jobRole)}. ` : ""}Read-only — ask Ben to change what you can access.
       </span>
     </div>
   );
