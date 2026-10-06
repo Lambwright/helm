@@ -28,6 +28,9 @@ const ADMIN_ERROR_MESSAGES = {
   invalid_role_override: "One of the per-app overrides isn't a valid role.",
   cannot_change_super_admin_role: "The Super Admin's role can't be changed.",
   invalid_matrix: "The matrix has an invalid cell.",
+  invalid_department: "That department isn't in Procore's list any more — refresh the list.",
+  procore_unavailable: "Couldn't reach Procore. Try again in a minute.",
+  procore_empty: "Procore returned no departments, so the list was left as it was.",
 };
 
 async function request(path, body) {
@@ -67,6 +70,11 @@ export const api = {
   unarchiveUser: (username) => request("/auth/admin/unarchive-user", { username }),
   updateUser: (username, fields) => request("/auth/admin/update-user", { username, ...fields }), // {newUsername?, role?, firstName?, lastName?, email?, apps?}
   forceLogout: (username) => request("/auth/admin/force-logout", { username }),
+  // Departments: Super Admin or the Admin job role (auth-worker enforces it).
+  getDepartments: () => request("/auth/departments"), // { departments: [{id, name, users:[{username, displayName}]}], refreshedAt, refreshedBy }
+  refreshDepartments: () => request("/auth/departments/refresh"), // { ok, count, refreshedAt }
+  fieldUsers: () => request("/auth/fields/list-users"), // { users: [{username, displayName, jobRole, department}] }
+  setDepartment: (username, departmentId) => request("/auth/fields/set", { username, field: "department", value: departmentId }),
   rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
 

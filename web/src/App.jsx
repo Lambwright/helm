@@ -9,19 +9,23 @@ import AuditLog from "./components/AuditLog.jsx";
 import MyAccount from "./components/MyAccount.jsx";
 import CrmOptions from "./components/CrmOptions.jsx";
 import MatrixEditor from "./components/MatrixEditor.jsx";
+import Departments from "./components/Departments.jsx";
 import Toast from "./components/Toast.jsx";
 import { SUPER_ADMIN } from "./apps.js";
 
 // Everything except My Account is Super Admin only (Ben) — see the role matrix
-// plan in auth-worker/README.md. auth-worker enforces this; hiding tabs is UI only.
+// plan in auth-worker/README.md — apart from Departments, which the Admin job
+// role can also edit. auth-worker enforces this; hiding tabs is UI only.
 const ADMIN_TABS = [
   { key: "users", label: "Users" },
+  { key: "departments", label: "Departments" },
   { key: "matrix", label: "Role Matrix" },
   { key: "audit", label: "Audit Log" },
   { key: "crm-options", label: "CRM Options" },
   { key: "account", label: "My Account" },
 ];
 const USER_TABS = [{ key: "account", label: "My Account" }];
+const DEPARTMENT_EDITOR_TABS = [{ key: "departments", label: "Departments" }, ...USER_TABS];
 
 export default function App() {
   const [authState, setAuthState] = useState("checking"); // checking | out | in
@@ -132,7 +136,8 @@ export default function App() {
   }
 
   const isAdmin = user?.jobRole === SUPER_ADMIN;
-  const tabs = isAdmin ? ADMIN_TABS : USER_TABS;
+  const canEditDepartments = isAdmin || user?.jobRole === "admin";
+  const tabs = isAdmin ? ADMIN_TABS : canEditDepartments ? DEPARTMENT_EDITOR_TABS : USER_TABS;
 
   return (
     <>
@@ -159,6 +164,9 @@ export default function App() {
             onRefresh={loadUsers}
             onToast={showToast}
           />
+        )}
+        {tab === "departments" && canEditDepartments && (
+          <Departments onToast={showToast} onUnauthorized={handleLogout} />
         )}
         {tab === "matrix" && isAdmin && (
           loadingUsers && !matrix ? (
