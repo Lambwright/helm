@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { jobRoleLabel, levelLabel, NO_ACCESS } from "../apps.js";
 import CreateUserModal from "./CreateUserModal.jsx";
@@ -26,16 +26,57 @@ function formatDateTime(iso) {
   }
 }
 
-// What they can actually open right now, with the level — e.g. "TALLY: Submitter".
-// Apps not yet on the role matrix just say "access".
-function accessSummary(u, matrix) {
-  const granted = Object.entries(u.appRoles || {}).filter(([, level]) => level && level !== NO_ACCESS);
-  if (!granted.length) return "None";
-  return granted.map(([app, level]) => {
-    const overridden = matrix?.live?.[app] && u.roleOverrides?.[app];
-    const extras = (u.appExtras?.[app] || []).map((id) => matrix?.apps?.find((a) => a.id === app)?.extras?.find((x) => x.id === id)?.label || id);
-    return `${app}: ${levelLabel(matrix, app, level)}${overridden ? "*" : ""}${extras.length ? ` + ${extras.join(", ")}` : ""}`;
-  }).join(", ");
+// What they can actually open right now, one line per app with the level —
+// e.g. TALLY Submitter. "*" marks a per-app override; switched-on tool
+// permissions follow the level.
+function accessRows(u, matrix) {
+  return Object.entries(u.appRoles || {})
+    .filter(([, level]) => level && level !== NO_ACCESS)
+    .map(([app, level]) => {
+      const overridden = matrix?.live?.[app] && u.roleOverrides?.[app];
+      const tools = (u.appExtras?.[app] || []).map((id) => matrix?.apps?.find((a) => a.id === app)?.extras?.find((x) => x.id === id)?.label || id);
+      return [app, `${levelLabel(matrix, app, level)}${overridden ? "*" : ""}${tools.length ? ` + ${tools.join(", ")}` : ""}`];
+    });
+}
+
+// "Actions ▾" — the less common, mostly disruptive actions, out of the way.
+function RowMenu({ label, items }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <div className="row-menu" ref={ref}>
+      <button className="btn btn-ghost btn-sm" aria-haspopup="menu" aria-expanded={open} aria-label={label} onClick={() => setOpen((v) => !v)}>
+        Actions ▾
+      </button>
+      {open && (
+        <div className="row-menu-list" role="menu">
+          {items.map((it) => (
+            <button
+              key={it.label}
+              role="menuitem"
+              className={`row-menu-item${it.danger ? " danger" : ""}`}
+              disabled={it.disabled}
+              title={it.title || ""}
+              onClick={() => { setOpen(false); it.onClick(); }}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function UserList({ users, matrix, currentUsername, loading, error, onRefresh, onToast }) {
@@ -104,53 +145,50 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
                   <td>{u.displayName}</td>
                   <td className="mono">{u.email || "—"}</td>
                   <td>{jobRoleLabel(u.jobRole)}</td>
-                  <td className="mono" style={{ fontSize: 11 }}>{accessSummary(u, matrix)}</td>
+                  <td className="mono" style={{ fontSize: 11 }}>
+                    {accessRows(u, matrix).length ? (
+                      <div className="access-list">
+                        {accessRows(u, matrix).map(([app, label]) => (
+                          <span key={app} style={{ display: "contents" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>{app}</span>
+                            <span>{label}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : "None"}
+                  </td>
                   <td>
                     <span className={`badge ${u.disabled ? "badge-archived" : "badge-active"}`}>
                       {u.disabled ? "Archived" : "Active"}
                     </span>
                   </td>
-                  <td className="mono" title={u.lastLoginIp ? `from ${u.lastLoginIp}` : ""}>
+                  <td className="mono" style={{ whiteSpace: "nowrap" }} title={u.lastLoginIp ? `from ${u.lastLoginIp}` : ""}>
                     {formatDateTime(u.lastLoginAt)}
                   </td>
-                  <td className="mono">{formatDate(u.createdAt)}</td>
+                  <td className="mono" style={{ whiteSpace: "nowrap" }}>{formatDate(u.createdAt)}</td>
                   <td>
-                    <div className="table-actions">
+                    <div className="table-actions" style={{ flexWrap: "nowrap" }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => setEditTarget(u)}>Edit</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setPasswordTarget(u.username)}>
-                        Set password
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        disabled={checkingLockout === u.username}
-                        onClick={() => checkLockout(u.username)}
-                      >
-                        {checkingLockout === u.username ? "Checking…" : "Check lockout"}
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        disabled={isSelf}
-                        title={isSelf ? "Use 'Sign out everywhere' in My Account instead" : ""}
-                        onClick={() => setLogoutTarget(u.username)}
-                      >
-                        Force sign-out
-                      </button>
-                      {u.disabled ? (
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => setArchiveTarget({ username: u.username, disabled: true })}
-                        >
-                          Unarchive
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-danger btn-sm"
-                          disabled={isSelf}
-                          onClick={() => setArchiveTarget({ username: u.username, disabled: false })}
-                        >
-                          Archive
-                        </button>
-                      )}
+                      <RowMenu
+                        label={`Actions for ${u.username}`}
+                        items={[
+                          {
+                            label: checkingLockout === u.username ? "Checking…" : "Check lockout",
+                            title: "Is this person temporarily blocked from signing in after too many wrong passwords?",
+                            disabled: checkingLockout === u.username,
+                            onClick: () => checkLockout(u.username),
+                          },
+                          {
+                            label: "Force sign-out",
+                            title: isSelf ? "Use 'Sign out everywhere' in My Account instead" : "Sign them out on every device now",
+                            disabled: isSelf,
+                            onClick: () => setLogoutTarget(u.username),
+                          },
+                          u.disabled
+                            ? { label: "Unarchive", onClick: () => setArchiveTarget({ username: u.username, disabled: true }) }
+                            : { label: "Archive", danger: true, disabled: isSelf, onClick: () => setArchiveTarget({ username: u.username, disabled: false }) },
+                        ]}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -180,6 +218,11 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
           matrix={matrix}
           isSelf={editTarget.username.toLowerCase() === currentUsername?.toLowerCase()}
           onClose={() => setEditTarget(null)}
+          onSetPassword={() => {
+            const name = editTarget.username;
+            setEditTarget(null);
+            setPasswordTarget(name);
+          }}
           onSaved={() => {
             setEditTarget(null);
             afterMutate(`${editTarget.username} updated.`);

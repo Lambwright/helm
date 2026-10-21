@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import { SUPER_ADMIN } from "../apps.js";
 import RoleAccessEditor from "./RoleAccessEditor.jsx";
 
-export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved }) {
+export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved, onSetPassword }) {
   const [username, setUsername] = useState(user.username);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
@@ -73,6 +73,15 @@ export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved }
           <label htmlFor="edit-email">Email</label>
           <input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
+        {onSetPassword && !isSelf && (
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>Password</label>
+            <div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onSetPassword} disabled={busy}>Set new password…</button>
+              <span className="field-help" style={{ marginLeft: 8 }}>Opens the password form; unsaved edits here are discarded.</span>
+            </div>
+          </div>
+        )}
         <RoleAccessEditor
           matrix={matrix}
           jobRole={isSuperAdmin ? SUPER_ADMIN : jobRole}
