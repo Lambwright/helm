@@ -6,10 +6,17 @@ import EditUserModal from "./EditUserModal.jsx";
 import SetPasswordModal from "./SetPasswordModal.jsx";
 import ConfirmModal from "./ConfirmModal.jsx";
 
+// Short dates for the table: the year only when it isn't this year. The full
+// date and time are in the cell's tooltip.
+function sameYear(d) {
+  return d.getFullYear() === new Date().getFullYear();
+}
+
 function formatDate(iso) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", ...(sameYear(d) ? {} : { year: "numeric" }) });
   } catch {
     return iso;
   }
@@ -18,9 +25,19 @@ function formatDate(iso) {
 function formatDateTime(iso) {
   if (!iso) return "Never";
   try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit", ...(sameYear(d) ? {} : { year: "numeric" }),
     });
+  } catch {
+    return iso;
+  }
+}
+
+function fullDateTime(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return iso;
   }
@@ -125,9 +142,7 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
         <table className="table">
           <thead>
             <tr>
-              <th>Username</th>
-              <th>Name</th>
-              <th>Email</th>
+              <th>Person</th>
               <th>Job role</th>
               <th>Access now</th>
               <th>Status</th>
@@ -141,9 +156,13 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
               const isSelf = u.username.toLowerCase() === currentUsername?.toLowerCase();
               return (
                 <tr key={u.username} className={u.disabled ? "row-disabled" : ""}>
-                  <td className="mono">{u.username}</td>
-                  <td>{u.displayName}</td>
-                  <td className="mono">{u.email || "—"}</td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{u.displayName}</div>
+                    <div className="mono" style={{ fontSize: 11, color: "var(--text-secondary)" }}>{u.username}</div>
+                    {u.email && u.email.toLowerCase() !== u.username.toLowerCase() && (
+                      <div className="mono" style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{u.email}</div>
+                    )}
+                  </td>
                   <td>{jobRoleLabel(u.jobRole)}</td>
                   <td className="mono" style={{ fontSize: 11 }}>
                     {accessRows(u, matrix).length ? (
@@ -162,10 +181,10 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
                       {u.disabled ? "Archived" : "Active"}
                     </span>
                   </td>
-                  <td className="mono" style={{ whiteSpace: "nowrap" }} title={u.lastLoginIp ? `from ${u.lastLoginIp}` : ""}>
+                  <td className="mono" style={{ whiteSpace: "nowrap" }} title={u.lastLoginAt ? `${fullDateTime(u.lastLoginAt)}${u.lastLoginIp ? ` from ${u.lastLoginIp}` : ""}` : ""}>
                     {formatDateTime(u.lastLoginAt)}
                   </td>
-                  <td className="mono" style={{ whiteSpace: "nowrap" }}>{formatDate(u.createdAt)}</td>
+                  <td className="mono" style={{ whiteSpace: "nowrap" }} title={fullDateTime(u.createdAt)}>{formatDate(u.createdAt)}</td>
                   <td>
                     <div className="table-actions" style={{ flexWrap: "nowrap" }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => setEditTarget(u)}>Edit</button>
