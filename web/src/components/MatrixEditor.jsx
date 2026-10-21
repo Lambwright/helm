@@ -8,15 +8,13 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 // Super Admin only. Roles × apps; each cell is "No access" or one of that app's
 // levels. The Live switch per app decides whether that app uses the matrix yet
 // (off = still today's per-person settings). Nothing is saved until you review
-// exactly whose access changes. The Extras row defines per-person tick-boxes an
-// app asks for (e.g. CRM's followup_manager), ticked per person in Users.
+// exactly whose access changes.
 export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
   const [cells, setCells] = useState(() => clone(matrix?.cells || {}));
   const [live, setLive] = useState(() => clone(matrix?.live || {}));
-  const [apps, setApps] = useState(() => clone(matrix?.apps || []));
   const [confirming, setConfirming] = useState(false);
 
-  const draft = useMemo(() => (matrix ? { ...matrix, apps, cells, live } : null), [matrix, apps, cells, live]);
+  const draft = useMemo(() => (matrix ? { ...matrix, cells, live } : null), [matrix, cells, live]);
 
   // Per person: every app whose level differs between now and the draft.
   const changes = useMemo(() => {
@@ -35,33 +33,10 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
     return out;
   }, [draft, users]);
 
-  const extrasChanges = useMemo(() => {
-    const out = [];
-    for (const app of apps) {
-      const before = (matrix?.apps.find((a) => a.id === app.id)?.extras || []).map((x) => x.id);
-      const after = (app.extras || []).map((x) => x.id);
-      for (const id of after) if (!before.includes(id)) out.push(`${app.label}: add "${id}"`);
-      for (const id of before) if (!after.includes(id)) out.push(`${app.label}: remove "${id}" (anyone ticked loses it)`);
-    }
-    return out;
-  }, [apps, matrix]);
-
-  const dirty = JSON.stringify(cells) !== JSON.stringify(matrix?.cells || {}) || JSON.stringify(live) !== JSON.stringify(matrix?.live || {}) || extrasChanges.length > 0;
+  const dirty = JSON.stringify(cells) !== JSON.stringify(matrix?.cells || {}) || JSON.stringify(live) !== JSON.stringify(matrix?.live || {});
 
   if (!matrix) {
     return <div className="card"><div className="empty-state">No role matrix has been saved yet.</div></div>;
-  }
-
-  // The id must be exactly what the app's own code checks for, so ask for it.
-  function addExtra(appId) {
-    const id = (window.prompt("Extra id, exactly as the app's code expects it (lowercase, e.g. followup_manager):") || "").trim();
-    if (!id) return;
-    if (!/^[a-z][a-z0-9_]{0,39}$/.test(id)) { onToast("Ids are lowercase letters, numbers and _ only, starting with a letter.", true); return; }
-    const label = (window.prompt("Label people will see in HELM (e.g. Follow-up manager):", id) || "").trim() || id;
-    setApps((prev) => prev.map((a) => (a.id !== appId ? a : (a.extras || []).some((x) => x.id === id) ? a : { ...a, extras: [...(a.extras || []), { id, label }] })));
-  }
-  function removeExtra(appId, id) {
-    setApps((prev) => prev.map((a) => (a.id !== appId ? a : { ...a, extras: (a.extras || []).filter((x) => x.id !== id) })));
   }
 
   function setCell(role, app, level) {
@@ -69,7 +44,7 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
   }
 
   async function save() {
-    const { matrix: saved } = await api.setMatrix({ apps, cells, live });
+    const { matrix: saved } = await api.setMatrix({ apps: matrix.apps, cells, live });
     setConfirming(false);
     onToast(changes.length ? `Saved. ${changes.length} ${changes.length === 1 ? "person's" : "people's"} access changed.` : "Saved.");
     onSaved(saved);
@@ -80,7 +55,7 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <div className="card-title" style={{ marginBottom: 0 }}>Role matrix</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost btn-sm" disabled={!dirty} onClick={() => { setCells(clone(matrix.cells)); setLive(clone(matrix.live)); setApps(clone(matrix.apps)); }}>
+          <button className="btn btn-ghost btn-sm" disabled={!dirty} onClick={() => { setCells(clone(matrix.cells)); setLive(clone(matrix.live)); }}>
             Discard changes
           </button>
           <button className="btn btn-accent btn-sm" disabled={!dirty} onClick={() => setConfirming(true)}>
@@ -147,20 +122,6 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
                 })}
               </tr>
             ))}
-            <tr>
-              <td><strong>Extras</strong><div className="field-help">ticked per person</div></td>
-              {apps.map((app) => (
-                <td key={app.id} style={{ textAlign: "center", verticalAlign: "top" }}>
-                  {(app.extras || []).map((x) => (
-                    <div key={x.id} title={x.id} style={{ whiteSpace: "nowrap" }}>
-                      {x.label}{" "}
-                      <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "0 4px" }} onClick={() => removeExtra(app.id, x.id)} aria-label={`Remove ${x.label}`}>×</button>
-                    </div>
-                  ))}
-                  <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "1px 6px", marginTop: 2 }} onClick={() => addExtra(app.id)}>+ Add</button>
-                </td>
-              ))}
-            </tr>
           </tbody>
         </table>
       </div>
@@ -169,9 +130,6 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
         <div style={{ marginTop: 14 }}>
           <div className="card-title">If you save: {changes.length ? `${changes.length} ${changes.length === 1 ? "person's" : "people's"} access changes` : "nobody's access changes"}</div>
           <ChangeList changes={changes} matrix={draft} />
-          {extrasChanges.length > 0 && (
-            <div className="field-help" style={{ marginTop: 8 }}>Extras: {extrasChanges.join("; ")}.</div>
-          )}
         </div>
       )}
 

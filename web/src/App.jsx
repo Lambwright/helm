@@ -10,6 +10,7 @@ import MyAccount from "./components/MyAccount.jsx";
 import CrmOptions from "./components/CrmOptions.jsx";
 import MatrixEditor from "./components/MatrixEditor.jsx";
 import Departments from "./components/Departments.jsx";
+import ToolPermissions from "./components/ToolPermissions.jsx";
 import Toast from "./components/Toast.jsx";
 import { SUPER_ADMIN } from "./apps.js";
 
@@ -31,6 +32,7 @@ export default function App() {
   const [authState, setAuthState] = useState("checking"); // checking | out | in
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("users");
+  const [matrixTab, setMatrixTab] = useState("roles"); // roles | tools
 
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -72,7 +74,7 @@ export default function App() {
     if (authState !== "in" || user?.jobRole !== SUPER_ADMIN) return;
     setLoadingUsers(true);
     setUsersError(null);
-    Promise.all([api.listUsers(), api.getMatrix()])
+    return Promise.all([api.listUsers(), api.getMatrix()])
       .then(([data, m]) => {
         setUsers(data.users || []);
         setMatrix(m.matrix || null);
@@ -169,6 +171,22 @@ export default function App() {
           <Departments onToast={showToast} onUnauthorized={handleLogout} />
         )}
         {tab === "matrix" && isAdmin && (
+          <div className="tabs" style={{ marginTop: -6 }}>
+            {[{ key: "roles", label: "Roles" }, { key: "tools", label: "Tool permissions" }].map((t) => (
+              <button key={t.key} className={`tab ${matrixTab === t.key ? "active" : ""}`} style={{ fontSize: 11 }} onClick={() => setMatrixTab(t.key)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {tab === "matrix" && isAdmin && matrixTab === "tools" && (
+          loadingUsers && !matrix ? (
+            <div className="card"><div className="empty-state">Loading…</div></div>
+          ) : (
+            <ToolPermissions matrix={matrix} users={users} onChanged={loadUsers} onToast={showToast} />
+          )
+        )}
+        {tab === "matrix" && isAdmin && matrixTab === "roles" && (
           loadingUsers && !matrix ? (
             <div className="card"><div className="empty-state">Loading…</div></div>
           ) : (
