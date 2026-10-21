@@ -3,9 +3,12 @@ import { APPS, JOB_ROLES, SUPER_ADMIN, NO_ACCESS, levelFor, levelLabel } from ".
 // Job role + per-app role overrides, with the resulting level per app.
 // Apps already switched to the matrix ("live") take their level from the role;
 // apps not switched yet keep today's per-person tick-box, shown alongside.
-export default function RoleAccessEditor({ matrix, jobRole, onJobRoleChange, overrides, onOverrideChange, legacyApps, onLegacyToggle, locked }) {
+// Below that, any per-person extras an app defines (e.g. CRM's follow-up
+// manager) for the apps this person can open.
+export default function RoleAccessEditor({ matrix, jobRole, onJobRoleChange, overrides, onOverrideChange, legacyApps, onLegacyToggle, extras, onExtraToggle, locked }) {
   const preview = { jobRole, roleOverrides: overrides, legacyApps: [...legacyApps], legacyAppRoles: {} };
   const anyAccess = jobRole === SUPER_ADMIN || APPS.some((a) => levelFor(preview, matrix, a.id) !== NO_ACCESS);
+  const extraApps = (matrix?.apps || []).filter((a) => a.extras?.length && (jobRole === SUPER_ADMIN || levelFor(preview, matrix, a.id) !== NO_ACCESS));
 
   return (
     <div>
@@ -77,6 +80,27 @@ export default function RoleAccessEditor({ matrix, jobRole, onJobRoleChange, ove
               This person gets no app access at all, so they can't sign in.
             </span>
           )}
+        </div>
+      )}
+
+      {extraApps.length > 0 && onExtraToggle && (
+        <div className="field" style={{ marginTop: 12, marginBottom: 4 }}>
+          <label>Extras</label>
+          {extraApps.map((app) =>
+            app.extras.map((x) => (
+              <label key={`${app.id}:${x.id}`} style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
+                <input
+                  type="checkbox"
+                  checked={!!extras?.[app.id]?.includes(x.id)}
+                  onChange={() => onExtraToggle(app.id, x.id)}
+                  style={{ width: "auto", padding: 0, margin: 0 }}
+                />
+                <span className="mono" style={{ fontSize: 12 }}>{app.label}</span>
+                <span>{x.label}</span>
+              </label>
+            ))
+          )}
+          <span className="field-help">On top of their level in that app. Only shown for apps they can open.</span>
         </div>
       )}
     </div>

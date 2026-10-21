@@ -33,7 +33,8 @@ function accessSummary(u, matrix) {
   if (!granted.length) return "None";
   return granted.map(([app, level]) => {
     const overridden = matrix?.live?.[app] && u.roleOverrides?.[app];
-    return `${app}: ${levelLabel(matrix, app, level)}${overridden ? "*" : ""}`;
+    const extras = (u.appExtras?.[app] || []).map((id) => matrix?.apps?.find((a) => a.id === app)?.extras?.find((x) => x.id === id)?.label || id);
+    return `${app}: ${levelLabel(matrix, app, level)}${overridden ? "*" : ""}${extras.length ? ` + ${extras.join(", ")}` : ""}`;
   }).join(", ");
 }
 

@@ -12,8 +12,17 @@ export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved }
   const [jobRole, setJobRole] = useState(user.jobRole || "project_manager");
   const [overrides, setOverrides] = useState(user.roleOverrides || {});
   const [legacyApps, setLegacyApps] = useState(new Set(user.legacyApps || []));
+  const [extras, setExtras] = useState(user.appExtrasStored || {});
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  function toggleExtra(appId, extraId) {
+    setExtras((prev) => {
+      const cur = prev[appId] || [];
+      const next = cur.includes(extraId) ? cur.filter((x) => x !== extraId) : [...cur, extraId];
+      return { ...prev, [appId]: next };
+    });
+  }
   const isSuperAdmin = user.jobRole === SUPER_ADMIN;
 
   function toggleLegacy(id) {
@@ -36,6 +45,7 @@ export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved }
         lastName: lastName.trim(),
         email: email.trim(),
         apps: Array.from(legacyApps),
+        appExtras: Object.fromEntries(Object.entries(extras).filter(([, ids]) => ids.length)),
       };
       if (!isSuperAdmin) {
         fields.jobRole = jobRole;
@@ -80,6 +90,8 @@ export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved }
           overrides={overrides}
           onOverrideChange={(appId, roleId) => setOverrides((prev) => ({ ...prev, [appId]: roleId }))}
           legacyApps={legacyApps}
+          extras={extras}
+          onExtraToggle={toggleExtra}
           onLegacyToggle={toggleLegacy}
           locked={isSuperAdmin}
         />

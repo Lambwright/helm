@@ -28,6 +28,7 @@ const ADMIN_ERROR_MESSAGES = {
   invalid_role_override: "One of the per-app overrides isn't a valid role.",
   cannot_change_super_admin_role: "The Super Admin's role can't be changed.",
   invalid_matrix: "The matrix has an invalid cell.",
+  invalid_app_extra: "One of the extras isn't defined for that app.",
   invalid_department: "That department isn't in Procore's list any more — refresh the list.",
   procore_unavailable: "Couldn't reach Procore. Try again in a minute.",
   procore_empty: "Procore returned no departments, so the list was left as it was.",

@@ -13,8 +13,17 @@ export default function CreateUserModal({ matrix, onClose, onCreated }) {
   const [jobRole, setJobRole] = useState(DEFAULT_JOB_ROLE);
   const [overrides, setOverrides] = useState({});
   const [legacyApps, setLegacyApps] = useState(new Set());
+  const [extras, setExtras] = useState({});
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  function toggleExtra(appId, extraId) {
+    setExtras((prev) => {
+      const cur = prev[appId] || [];
+      const next = cur.includes(extraId) ? cur.filter((x) => x !== extraId) : [...cur, extraId];
+      return { ...prev, [appId]: next };
+    });
+  }
 
   function toggleLegacy(id) {
     setLegacyApps((prev) => {
@@ -40,6 +49,7 @@ export default function CreateUserModal({ matrix, onClose, onCreated }) {
         jobRole,
         roleOverrides: Object.fromEntries(Object.entries(overrides).filter(([, r]) => r)),
         apps: Array.from(legacyApps),
+        appExtras: Object.fromEntries(Object.entries(extras).filter(([, ids]) => ids.length)),
       });
       onCreated();
     } catch (err) {
@@ -82,6 +92,8 @@ export default function CreateUserModal({ matrix, onClose, onCreated }) {
           overrides={overrides}
           onOverrideChange={(appId, roleId) => setOverrides((prev) => ({ ...prev, [appId]: roleId }))}
           legacyApps={legacyApps}
+          extras={extras}
+          onExtraToggle={toggleExtra}
           onLegacyToggle={toggleLegacy}
           locked={false}
         />
