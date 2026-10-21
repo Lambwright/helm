@@ -107,3 +107,15 @@ Nothing changes until every app session has weighed in and Ben says go.
   until you reload it. A `window.addEventListener("storage", …)` that
   re-runs `verify()` when `einbau_id_token` changes would fix that. Worth
   doing in every app at once, not HELM alone.
+- **Gags (Easter eggs) page** (Ben, 2026-10-21; not started). A Super Admin
+  page where Ben defines harmless visual gags (cameos, seasonal touches, label
+  swaps), who sees them (people, everyone, one app), when (date range, every
+  Nth sign-in, one-time), each with its own on/off plus one kill switch for
+  all. Delivered like tool permissions: e.g. `user.gags` on login/verify, and
+  apps ignore gag ids they don't know. Guardrails: never touch data,
+  approvals or postings; never play mid-approval/posting; respect
+  `prefers-reduced-motion`; never hide real buttons. Count "every Nth sign-in"
+  in auth-worker, not localStorage, so it works across browsers and saved
+  sessions. Today's only gag is hardcoded in TALLY (`Cameo.jsx`,
+  `CAMEO_USERS`/`CAMEO_EVERY` in `App.jsx`) and would move here. Full brief:
+  `../HELM-EASTER-EGG-GAGS-BRIEF.md`.
