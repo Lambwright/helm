@@ -12,9 +12,12 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
   const [cells, setCells] = useState(() => clone(matrix?.cells || {}));
   const [live, setLive] = useState(() => clone(matrix?.live || {}));
+  // App definitions (levels can be added here; tool permissions are managed
+  // in the Tool permissions sub-tab and pass through untouched).
+  const [apps, setApps] = useState(() => clone(matrix?.apps || []));
   const [confirming, setConfirming] = useState(false);
 
-  const draft = useMemo(() => (matrix ? { ...matrix, cells, live } : null), [matrix, cells, live]);
+  const draft = useMemo(() => (matrix ? { ...matrix, apps, cells, live } : null), [matrix, apps, cells, live]);
 
   // Per person: every app whose level differs between now and the draft.
   const changes = useMemo(() => {
@@ -33,10 +36,26 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
     return out;
   }, [draft, users]);
 
-  const dirty = JSON.stringify(cells) !== JSON.stringify(matrix?.cells || {}) || JSON.stringify(live) !== JSON.stringify(matrix?.live || {});
+  const addedLevels = apps.flatMap((a) => {
+    const before = new Set((matrix?.apps.find((x) => x.id === a.id)?.levels || []).map((l) => l.id));
+    return a.levels.filter((l) => !before.has(l.id)).map((l) => `${a.label}: ${l.label} (${l.id})`);
+  });
+  const dirty = JSON.stringify(cells) !== JSON.stringify(matrix?.cells || {}) || JSON.stringify(live) !== JSON.stringify(matrix?.live || {}) || addedLevels.length > 0;
 
   if (!matrix) {
     return <div className="card"><div className="empty-state">No role matrix has been saved yet.</div></div>;
+  }
+
+  // A new level only means something once the app's own code checks for it,
+  // so the id comes from the app's Claude session (e.g. SCOUT "estimator").
+  function addLevel(appId) {
+    const app = apps.find((a) => a.id === appId);
+    const id = (window.prompt(`New ${app.label} level id, exactly as ${app.label}'s code expects it (lowercase, e.g. estimator):`) || "").trim();
+    if (!id) return;
+    if (!/^[a-z][a-z0-9_]{0,39}$/.test(id) || id === NO_ACCESS) { onToast("Level ids are lowercase letters, numbers and _ only, starting with a letter.", true); return; }
+    if (app.levels.some((l) => l.id === id)) { onToast(`${app.label} already has a level "${id}".`, true); return; }
+    const label = (window.prompt("Label shown in HELM (e.g. Estimator):", id.charAt(0).toUpperCase() + id.slice(1)) || "").trim() || id;
+    setApps((prev) => prev.map((a) => (a.id === appId ? { ...a, levels: [...a.levels, { id, label }] } : a)));
   }
 
   function setCell(role, app, level) {
@@ -44,7 +63,7 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
   }
 
   async function save() {
-    const { matrix: saved } = await api.setMatrix({ apps: matrix.apps, cells, live });
+    const { matrix: saved } = await api.setMatrix({ apps, cells, live });
     setConfirming(false);
     onToast(changes.length ? `Saved. ${changes.length} ${changes.length === 1 ? "person's" : "people's"} access changed.` : "Saved.");
     onSaved(saved);
@@ -55,7 +74,7 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <div className="card-title" style={{ marginBottom: 0 }}>Role matrix</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost btn-sm" disabled={!dirty} onClick={() => { setCells(clone(matrix.cells)); setLive(clone(matrix.live)); }}>
+          <button className="btn btn-ghost btn-sm" disabled={!dirty} onClick={() => { setCells(clone(matrix.cells)); setLive(clone(matrix.live)); setApps(clone(matrix.apps)); }}>
             Discard changes
           </button>
           <button className="btn btn-accent btn-sm" disabled={!dirty} onClick={() => setConfirming(true)}>
@@ -87,6 +106,11 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
                     />
                     <span style={{ color: live[app.id] ? "var(--green)" : "var(--text-tertiary)" }}>{live[app.id] ? "Live" : "Off"}</span>
                   </label>
+                  <div>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "0 6px", marginTop: 4, fontSize: 10 }} onClick={() => addLevel(app.id)} title={`Add a level to ${app.label} (only one its code already knows)`}>
+                      + Level
+                    </button>
+                  </div>
                 </th>
               ))}
             </tr>
@@ -115,7 +139,7 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
                         aria-label={`${role.label} in ${app.label}`}
                       >
                         <option value={NO_ACCESS}>No access</option>
-                        {app.levels.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+                        {(apps.find((a) => a.id === app.id)?.levels || app.levels).map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
                       </select>
                     </td>
                   );
@@ -130,6 +154,9 @@ export default function MatrixEditor({ matrix, users, onSaved, onToast }) {
         <div style={{ marginTop: 14 }}>
           <div className="card-title">If you save: {changes.length ? `${changes.length} ${changes.length === 1 ? "person's" : "people's"} access changes` : "nobody's access changes"}</div>
           <ChangeList changes={changes} matrix={draft} />
+          {addedLevels.length > 0 && (
+            <div className="field-help" style={{ marginTop: 8 }}>New levels: {addedLevels.join("; ")}.</div>
+          )}
         </div>
       )}
 
