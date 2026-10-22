@@ -107,6 +107,14 @@ Nothing changes until every app session has weighed in and Ben says go.
   until you reload it. A `window.addEventListener("storage", …)` that
   re-runs `verify()` when `einbau_id_token` changes would fix that. Worth
   doing in every app at once, not HELM alone.
+- **Stable user ids** (Ben, 2026-10-21; not started). Every user should
+  have a permanent id (e.g. a UUID minted at create-user, returned as
+  `user.id` on login/verify and on `/auth/app/users` rows) that never changes
+  when their username or email does. Apps key per-person data (preferences,
+  owners, attribution) by that id instead of username. Ben's rename from
+  `ben` to `ben@einbau.ca` left LEDGER preferences and PUNCH/TALLY lists on
+  the old name. Needs a backfill for existing users plus a move-over in each
+  app, so plan it as its own suite-wide change.
 - **Gags (Easter eggs) page** (Ben, 2026-10-21; not started). A Super Admin
   page where Ben defines harmless visual gags (cameos, seasonal touches, label
   swaps), who sees them (people, everyone, one app), when (date range, every
