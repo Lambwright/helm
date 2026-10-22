@@ -277,4 +277,5 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .row-menu-item:hover:not(:disabled) { background: var(--bg-page); color: var(--text-primary); }
 .row-menu-item.danger { color: var(--red); }
 .row-menu-item:disabled { color: var(--text-tertiary); cursor: default; }
-.access-list { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 1px 8px; white-space: nowrap; }
+.access-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 8px; max-width: 280px; }
+.access-list .access-tools { display: block; font-size: 10px; color: var(--text-secondary); white-space: normal; line-height: 1.35; }

@@ -52,7 +52,7 @@ function accessRows(u, matrix) {
     .map(([app, level]) => {
       const overridden = matrix?.live?.[app] && u.roleOverrides?.[app];
       const tools = (u.appExtras?.[app] || []).map((id) => matrix?.apps?.find((a) => a.id === app)?.extras?.find((x) => x.id === id)?.label || id);
-      return [app, `${levelLabel(matrix, app, level)}${overridden ? "*" : ""}${tools.length ? ` + ${tools.join(", ")}` : ""}`];
+      return [app, `${levelLabel(matrix, app, level)}${overridden ? "*" : ""}`, tools];
     });
 }
 
@@ -167,10 +167,13 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
                   <td className="mono" style={{ fontSize: 11 }}>
                     {accessRows(u, matrix).length ? (
                       <div className="access-list">
-                        {accessRows(u, matrix).map(([app, label]) => (
+                        {accessRows(u, matrix).map(([app, label, tools]) => (
                           <span key={app} style={{ display: "contents" }}>
                             <span style={{ color: "var(--text-secondary)" }}>{app}</span>
-                            <span>{label}</span>
+                            <span>
+                              {label}
+                              {tools.length > 0 && <span className="access-tools">+ {tools.join(", ")}</span>}
+                            </span>
                           </span>
                         ))}
                       </div>
