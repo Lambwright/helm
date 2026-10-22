@@ -101,7 +101,7 @@ export default function App() {
   }, [authState, user]);
 
   useEffect(() => {
-    if (tab === "users" || tab === "crm-options" || tab === "matrix") loadUsers();
+    if (tab === "users" || tab === "matrix") loadUsers();
     if (tab === "audit") loadAudit();
   }, [tab, loadUsers, loadAudit]);
 
@@ -202,7 +202,7 @@ export default function App() {
         {tab === "audit" && isAdmin && (
           <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />
         )}
-        {tab === "crm-options" && isAdmin && <CrmOptions users={users} onToast={showToast} />}
+        {tab === "crm-options" && isAdmin && <CrmOptions onToast={showToast} />}
         {tab === "account" && (
           <MyAccount user={user} onUserUpdated={handleUserUpdated} onToast={showToast} />
         )}

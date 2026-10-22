@@ -37,10 +37,9 @@ async function crmRequest(path, options = {}) {
   return data;
 }
 
-export default function CrmOptions({ users, onToast }) {
+export default function CrmOptions({ onToast }) {
   const [settings, setSettings] = useState(null);
   const [cadence, setCadence] = useState({});
-  const [assignable, setAssignable] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -50,31 +49,18 @@ export default function CrmOptions({ users, onToast }) {
       .then((data) => {
         setSettings(data);
         setCadence(data.cadence);
-        setAssignable(new Set((data.assignableUsernames || []).map((u) => u.username)));
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  function toggleAssignable(username) {
-    setAssignable((prev) => {
-      const next = new Set(prev);
-      if (next.has(username)) next.delete(username);
-      else next.add(username);
-      return next;
-    });
-  }
-
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      const assignable_usernames = users
-        .filter((u) => assignable.has(u.username))
-        .map((u) => ({ username: u.username, displayName: u.displayName || `${u.firstName} ${u.lastName}`.trim() || u.username }));
       const data = await crmRequest("/settings", {
         method: "PATCH",
-        body: JSON.stringify({ followup_cadence_days: cadence, assignable_usernames }),
+        body: JSON.stringify({ followup_cadence_days: cadence }),
       });
       setSettings(data);
       onToast?.("CRM options saved.");
@@ -108,22 +94,6 @@ export default function CrmOptions({ users, onToast }) {
               onChange={(e) => setCadence((c) => ({ ...c, [stage]: Number(e.target.value) || null }))}
             />
           </div>
-        ))}
-      </div>
-
-      <div className="card-title">Assignable users</div>
-      <p className="field-help" style={{ marginBottom: 12 }}>
-        Who can be set as a bid's owner or estimator in CRM — meant to be the estimators/leadership who
-        actually work follow-ups. An admin-role user always bypasses this. Also determines whose CRM nav
-        puts the Follow-ups tab first. Leaving this empty allows anyone (no restriction yet).
-      </p>
-      <div className="row-list" style={{ marginBottom: 20 }}>
-        {users.filter((u) => !u.disabled).map((u) => (
-          <label key={u.username} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontSize: 13 }}>
-            <input type="checkbox" checked={assignable.has(u.username)} onChange={() => toggleAssignable(u.username)} />
-            {u.displayName || `${u.firstName} ${u.lastName}`.trim() || u.username}
-            <span className="row-secondary">({u.username})</span>
-          </label>
         ))}
       </div>
 
