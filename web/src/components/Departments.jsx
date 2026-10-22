@@ -13,14 +13,26 @@ function formatDateTime(iso) {
   }
 }
 
-// Ties each person to their Procore department (one each) and to their own
-// Procore user. Apps default their filters to the department, only ever write
-// a department to Procore if it's tied to someone here, and build person
-// pickers (e.g. SCOUT's estimators) from the linked Procore user instead of
-// hardcoded ids. Super Admin and the Admin job role can edit.
+// The same person in each outside system. `type` is what auth-worker's
+// /auth/fields/set expects; `field` is where the link sits on the user.
+// matchByName: NetSuite emails are mostly personal, so fall back to an exact
+// full-name match there.
+export const LINK_TYPES = [
+  { type: "procore_user", field: "procoreUser", label: "Procore user", short: "Procore", matchByName: false },
+  { type: "rp_person", field: "rpPerson", label: "Resource Planning", short: "RP", matchByName: false },
+  { type: "netsuite_employee", field: "netsuiteEmployee", label: "NetSuite employee", short: "NetSuite", matchByName: true },
+];
+
+const norm = (s) => String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+
+// Ties each person to their Procore department (one each) and to the same
+// person in Procore, Resource Planning and NetSuite. Apps default filters to
+// the department, only write a department to Procore if it's tied to someone
+// here, and use these ids instead of matching names or hardcoding lists.
+// Super Admin and the Admin job role can edit.
 export default function Departments({ onToast, onUnauthorized }) {
   const [departments, setDepartments] = useState([]);
-  const [procoreUsers, setProcoreUsers] = useState([]);
+  const [options, setOptions] = useState({}); // type → { list, refreshedAt }
   const [matching, setMatching] = useState(false);
   const [meta, setMeta] = useState({ refreshedAt: null, refreshedBy: null });
   const [users, setUsers] = useState([]);
@@ -36,10 +48,10 @@ export default function Departments({ onToast, onUnauthorized }) {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    Promise.all([api.getDepartments(), api.fieldUsers(), api.procoreUsers()])
-      .then(([d, u, p]) => {
+    Promise.all([api.getDepartments(), api.fieldUsers(), api.linkOptions()])
+      .then(([d, u, o]) => {
         setDepartments(d.departments || []);
-        setProcoreUsers(p.users || []);
+        setOptions(o || {});
         setMeta({ refreshedAt: d.refreshedAt, refreshedBy: d.refreshedBy });
         setUsers((u.users || []).sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username)));
       })
@@ -49,10 +61,10 @@ export default function Departments({ onToast, onUnauthorized }) {
 
   useEffect(load, [load]);
 
-  async function change(username, departmentId) {
+  async function save(username, fn) {
     setSaving(username);
     try {
-      await api.setDepartment(username, departmentId || null);
+      await fn();
       load();
     } catch (e) {
       if (e.unauthorized) unauthorized.current();
@@ -62,34 +74,27 @@ export default function Departments({ onToast, onUnauthorized }) {
     }
   }
 
-  async function changeProcoreUser(username, procoreUserId) {
-    setSaving(username);
-    try {
-      await api.setProcoreUser(username, procoreUserId || null);
-      load();
-    } catch (e) {
-      if (e.unauthorized) unauthorized.current();
-      else onToast(e.message, true);
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  // Links everyone not yet linked whose email (or email-style username)
-  // matches exactly one Procore employee's email. Never overwrites a link.
-  async function matchByEmail() {
+  // Fills every empty link whose email (or email-style username) matches
+  // exactly one option — or, for NetSuite, exactly one exact full name.
+  // Never overwrites an existing link.
+  async function matchAll() {
     setMatching(true);
     let linked = 0;
     try {
-      for (const u of users.filter((x) => !x.procoreUser)) {
-        const emails = [u.email, u.username].map((x) => (x || "").toLowerCase()).filter((x) => x.includes("@"));
-        const hits = procoreUsers.filter((p) => p.email && emails.includes(p.email));
-        if (hits.length === 1) {
-          await api.setProcoreUser(u.username, hits[0].id);
-          linked++;
+      for (const u of users) {
+        const emails = [u.email, u.username].map(norm).filter((x) => x.includes("@"));
+        for (const t of LINK_TYPES) {
+          if (u[t.field]) continue;
+          const list = options[t.type]?.list || [];
+          let hits = list.filter((p) => p.email && emails.includes(norm(p.email)));
+          if (!hits.length && t.matchByName) hits = list.filter((p) => norm(p.name) === norm(u.displayName));
+          if (hits.length === 1) {
+            await api.setLink(u.username, t.type, hits[0].id);
+            linked++;
+          }
         }
       }
-      onToast(linked ? `Linked ${linked} ${linked === 1 ? "person" : "people"} by email.` : "No new email matches.");
+      onToast(linked ? `Made ${linked} new ${linked === 1 ? "link" : "links"}.` : "No new matches.");
       load();
     } catch (e) {
       if (e.unauthorized) unauthorized.current();
@@ -103,7 +108,12 @@ export default function Departments({ onToast, onUnauthorized }) {
     setRefreshing(true);
     try {
       const r = await api.refreshDepartments();
-      onToast(`Loaded ${r.count} departments and ${r.procoreUsers} Procore employees.`);
+      const c = r.counts || {};
+      onToast(
+        `Loaded ${c.departments || 0} departments, ${c.procoreUsers || 0} Procore employees, ${c.rpPeople || 0} Resource Planning people, ${c.netsuiteEmployees || 0} NetSuite employees.` +
+          (r.failed?.length ? ` Couldn't reach: ${r.failed.join(", ")} (kept the previous list).` : ""),
+        !!r.failed?.length
+      );
       load();
     } catch (e) {
       if (e.unauthorized) unauthorized.current();
@@ -113,32 +123,38 @@ export default function Departments({ onToast, onUnauthorized }) {
     }
   }
 
-  const linkedTo = {}; // procore user id → display names of people linked to it
-  for (const u of users) if (u.procoreUser) (linkedTo[u.procoreUser.id] = linkedTo[u.procoreUser.id] || []).push(u.displayName || u.username);
+  // option id → names of people already linked to it, per link type
+  const linkedTo = {};
+  for (const t of LINK_TYPES) {
+    linkedTo[t.type] = {};
+    for (const u of users) if (u[t.field]) (linkedTo[t.type][u[t.field].id] = linkedTo[t.type][u[t.field].id] || []).push(u.displayName || u.username);
+  }
   const untied = departments.filter((d) => d.users.length === 0);
   const shared = departments.filter((d) => d.users.length > 1);
+  const anyOptions = LINK_TYPES.some((t) => options[t.type]?.list?.length);
+  const selectStyle = { maxWidth: 190, fontSize: 12 };
 
   return (
     <>
       <div className="card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <div className="card-title" style={{ marginBottom: 0 }}>Procore links</div>
+          <div className="card-title" style={{ marginBottom: 0 }}>Linked ids</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={matchByEmail} disabled={matching || !procoreUsers.length} title="Link everyone not yet linked whose email matches exactly one Procore employee">
-              {matching ? "Matching…" : "Match Procore users by email"}
+            <button className="btn btn-ghost btn-sm" onClick={matchAll} disabled={matching || !anyOptions} title="Fill empty links by email (NetSuite: by exact name too). Never changes an existing link.">
+              {matching ? "Matching…" : "Match by email"}
             </button>
             <button className="btn btn-ghost btn-sm" onClick={refresh} disabled={refreshing}>
-              {refreshing ? "Refreshing…" : "Refresh from Procore"}
+              {refreshing ? "Refreshing…" : "Refresh lists"}
             </button>
           </div>
         </div>
         <div className="field-help" style={{ marginBottom: 14 }}>
-          Each person's Procore department and their own Procore user. Apps open on the department by
-          default, only departments tied to someone here can be written to Procore, and person pickers in the
-          apps (e.g. SCOUT's estimators) use the linked Procore user. {departments.length} departments and{" "}
-          {procoreUsers.length} active Procore employees, last loaded {formatDateTime(meta.refreshedAt)}
-          {meta.refreshedBy ? ` (${meta.refreshedBy})` : ""}.
-          {!procoreUsers.length && " Click Refresh from Procore to load the Procore users."}
+          Each person's Procore department, and the same person in Procore, Resource Planning and NetSuite. Apps
+          use these instead of matching names: a department can only be written to Procore if it's tied to someone
+          here, and project-setup syncs (team PM, Resource Planning PM) use the linked ids. Lists last loaded{" "}
+          {formatDateTime(meta.refreshedAt)}{meta.refreshedBy ? ` (${meta.refreshedBy})` : ""}
+          {LINK_TYPES.map((t) => `, ${options[t.type]?.list?.length || 0} ${t.short}`).join("")}.
+          {!anyOptions && " Click Refresh lists to load the people from each system."}
         </div>
 
         {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
@@ -149,21 +165,23 @@ export default function Departments({ onToast, onUnauthorized }) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Job role</th>
                 <th>Department</th>
-                <th>Procore user</th>
+                {LINK_TYPES.map((t) => <th key={t.type}>{t.label}</th>)}
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.username}>
-                  <td>{u.displayName || u.username}</td>
-                  <td>{jobRoleLabel(u.jobRole)}</td>
+                  <td>
+                    <div>{u.displayName || u.username}</div>
+                    <div className="field-help" style={{ fontSize: 11 }}>{jobRoleLabel(u.jobRole)}</div>
+                  </td>
                   <td>
                     <select
                       value={u.department?.id || ""}
                       disabled={saving === u.username}
-                      onChange={(e) => change(u.username, e.target.value)}
+                      onChange={(e) => save(u.username, () => api.setDepartment(u.username, e.target.value || null))}
+                      style={selectStyle}
                     >
                       <option value="">No department</option>
                       {u.department?.missing && (
@@ -179,26 +197,35 @@ export default function Departments({ onToast, onUnauthorized }) {
                       })}
                     </select>
                   </td>
-                  <td>
-                    <select
-                      value={u.procoreUser?.id || ""}
-                      disabled={saving === u.username || (!procoreUsers.length && !u.procoreUser)}
-                      onChange={(e) => changeProcoreUser(u.username, e.target.value)}
-                    >
-                      <option value="">Not linked</option>
-                      {u.procoreUser && !procoreUsers.some((p) => p.id === u.procoreUser.id) && (
-                        <option value={u.procoreUser.id}>{u.procoreUser.name || u.procoreUser.id} (not in the latest list)</option>
-                      )}
-                      {procoreUsers.map((p) => {
-                        const others = (linkedTo[p.id] || []).filter((n) => n !== (u.displayName || u.username));
-                        return (
-                          <option key={p.id} value={p.id}>
-                            {p.name}{p.email ? ` (${p.email})` : ""}{others.length ? ` — linked to ${others.join(", ")}` : ""}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </td>
+                  {LINK_TYPES.map((t) => {
+                    const list = options[t.type]?.list || [];
+                    const cur = u[t.field];
+                    return (
+                      <td key={t.type}>
+                        <select
+                          value={cur?.id || ""}
+                          disabled={saving === u.username || (!list.length && !cur)}
+                          onChange={(e) => save(u.username, () => api.setLink(u.username, t.type, e.target.value || null))}
+                          style={selectStyle}
+                          title={cur ? `${cur.name} (id ${cur.id})` : ""}
+                          aria-label={`${u.displayName || u.username}: ${t.label}`}
+                        >
+                          <option value="">Not linked</option>
+                          {cur && !list.some((p) => p.id === cur.id) && (
+                            <option value={cur.id}>{cur.name || cur.id} (not in the latest list)</option>
+                          )}
+                          {list.map((p) => {
+                            const others = (linkedTo[t.type][p.id] || []).filter((n) => n !== (u.displayName || u.username));
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name}{p.company ? ` · ${p.company}` : ""}{p.email ? ` (${p.email})` : ""}{others.length ? ` — linked to ${others.join(", ")}` : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -208,7 +235,7 @@ export default function Departments({ onToast, onUnauthorized }) {
 
       {!loading && departments.length > 0 && (
         <div className="card">
-          <div className="card-title">Not tied to anyone</div>
+          <div className="card-title">Departments not tied to anyone</div>
           <div className="field-help" style={{ marginBottom: 10 }}>
             Apps won't write these to Procore. They can still appear as filters where an app has data for them.
           </div>

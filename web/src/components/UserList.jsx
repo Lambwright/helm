@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { jobRoleLabel, levelLabel, NO_ACCESS } from "../apps.js";
+import { LINK_TYPES } from "./Departments.jsx";
 import CreateUserModal from "./CreateUserModal.jsx";
 import EditUserModal from "./EditUserModal.jsx";
 import SetPasswordModal from "./SetPasswordModal.jsx";
@@ -54,6 +55,28 @@ function accessRows(u, matrix) {
       const tools = (u.appExtras?.[app] || []).map((id) => matrix?.apps?.find((a) => a.id === app)?.extras?.find((x) => x.id === id)?.label || id);
       return [app, `${levelLabel(matrix, app, level)}${overridden ? "*" : ""}`, tools];
     });
+}
+
+// The person's ids in other systems (set in Linked ids), so they're on hand
+// here. Long ids (Resource Planning's UUIDs) are shortened; hover for the full id.
+function LinkedIds({ u }) {
+  const f = u.fields || {};
+  const items = [
+    f.department && { k: "Dept", v: f.department.name || f.department.id, full: `Department: ${f.department.name || ""} (id ${f.department.id})` },
+    ...LINK_TYPES.map((t) => f[t.field] && {
+      k: t.short,
+      v: f[t.field].id.length > 12 ? `${f[t.field].id.slice(0, 8)}…` : f[t.field].id,
+      full: `${t.label}: ${f[t.field].name || ""} (id ${f[t.field].id})`,
+    }),
+  ].filter(Boolean);
+  if (!items.length) return null;
+  return (
+    <div className="mono" style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 2, lineHeight: 1.5 }}>
+      {items.map((it) => (
+        <div key={it.k} title={it.full}>{it.k} {it.v}</div>
+      ))}
+    </div>
+  );
 }
 
 // "Actions ▾" — the less common, mostly disruptive actions, out of the way.
@@ -162,6 +185,7 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
                     {u.email && u.email.toLowerCase() !== u.username.toLowerCase() && (
                       <div className="mono" style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{u.email}</div>
                     )}
+                    <LinkedIds u={u} />
                   </td>
                   <td>{jobRoleLabel(u.jobRole)}</td>
                   <td className="mono" style={{ fontSize: 11 }}>

@@ -30,6 +30,8 @@ const ADMIN_ERROR_MESSAGES = {
   invalid_matrix: "The matrix has an invalid cell.",
   invalid_app_extra: "One of the extras isn't defined for that app.",
   invalid_procore_user: "That Procore user isn't in the list any more — refresh from Procore.",
+  invalid_rp_person: "That Resource Planning person isn't in the list any more — refresh the lists.",
+  invalid_netsuite_employee: "That NetSuite employee isn't in the list any more — refresh the lists.",
   invalid_department: "That department isn't in Procore's list any more — refresh the list.",
   procore_unavailable: "Couldn't reach Procore. Try again in a minute.",
   procore_empty: "Procore returned no departments, so the list was left as it was.",
@@ -79,6 +81,8 @@ export const api = {
   setDepartment: (username, departmentId) => request("/auth/fields/set", { username, field: "department", value: departmentId }),
   procoreUsers: () => request("/auth/procore-users"), // { users: [{id, name, email}] (active Procore employees), refreshedAt }
   setProcoreUser: (username, procoreUserId) => request("/auth/fields/set", { username, field: "procore_user", value: procoreUserId }),
+  linkOptions: () => request("/auth/link-options"), // { procore_user|rp_person|netsuite_employee: { list: [{id, name, email, company?}], refreshedAt } }
+  setLink: (username, type, id) => request("/auth/fields/set", { username, field: type, value: id }),
   rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
 
