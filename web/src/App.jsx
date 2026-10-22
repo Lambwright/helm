@@ -19,14 +19,14 @@ import { SUPER_ADMIN } from "./apps.js";
 // role can also edit. auth-worker enforces this; hiding tabs is UI only.
 const ADMIN_TABS = [
   { key: "users", label: "Users" },
-  { key: "departments", label: "Departments" },
+  { key: "departments", label: "Procore links" },
   { key: "matrix", label: "Role Matrix" },
   { key: "audit", label: "Audit Log" },
   { key: "crm-options", label: "CRM Options" },
   { key: "account", label: "My Account" },
 ];
 const USER_TABS = [{ key: "account", label: "My Account" }];
-const DEPARTMENT_EDITOR_TABS = [{ key: "departments", label: "Departments" }, ...USER_TABS];
+const DEPARTMENT_EDITOR_TABS = [{ key: "departments", label: "Procore links" }, ...USER_TABS];
 
 export default function App() {
   const [authState, setAuthState] = useState("checking"); // checking | out | in

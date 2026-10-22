@@ -29,6 +29,7 @@ const ADMIN_ERROR_MESSAGES = {
   cannot_change_super_admin_role: "The Super Admin's role can't be changed.",
   invalid_matrix: "The matrix has an invalid cell.",
   invalid_app_extra: "One of the extras isn't defined for that app.",
+  invalid_procore_user: "That Procore user isn't in the list any more — refresh from Procore.",
   invalid_department: "That department isn't in Procore's list any more — refresh the list.",
   procore_unavailable: "Couldn't reach Procore. Try again in a minute.",
   procore_empty: "Procore returned no departments, so the list was left as it was.",
@@ -76,6 +77,8 @@ export const api = {
   refreshDepartments: () => request("/auth/departments/refresh"), // { ok, count, refreshedAt }
   fieldUsers: () => request("/auth/fields/list-users"), // { users: [{username, displayName, jobRole, department}] }
   setDepartment: (username, departmentId) => request("/auth/fields/set", { username, field: "department", value: departmentId }),
+  procoreUsers: () => request("/auth/procore-users"), // { users: [{id, name, email}] (active Procore employees), refreshedAt }
+  setProcoreUser: (username, procoreUserId) => request("/auth/fields/set", { username, field: "procore_user", value: procoreUserId }),
   rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
 

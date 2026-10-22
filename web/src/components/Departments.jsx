@@ -13,11 +13,15 @@ function formatDateTime(iso) {
   }
 }
 
-// Ties each person to their Procore department (one each). Apps use it to
-// default their filters, and only ever write a department to Procore if it's
-// tied to someone here. Super Admin and the Admin job role can edit.
+// Ties each person to their Procore department (one each) and to their own
+// Procore user. Apps default their filters to the department, only ever write
+// a department to Procore if it's tied to someone here, and build person
+// pickers (e.g. SCOUT's estimators) from the linked Procore user instead of
+// hardcoded ids. Super Admin and the Admin job role can edit.
 export default function Departments({ onToast, onUnauthorized }) {
   const [departments, setDepartments] = useState([]);
+  const [procoreUsers, setProcoreUsers] = useState([]);
+  const [matching, setMatching] = useState(false);
   const [meta, setMeta] = useState({ refreshedAt: null, refreshedBy: null });
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,9 +36,10 @@ export default function Departments({ onToast, onUnauthorized }) {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    Promise.all([api.getDepartments(), api.fieldUsers()])
-      .then(([d, u]) => {
+    Promise.all([api.getDepartments(), api.fieldUsers(), api.procoreUsers()])
+      .then(([d, u, p]) => {
         setDepartments(d.departments || []);
+        setProcoreUsers(p.users || []);
         setMeta({ refreshedAt: d.refreshedAt, refreshedBy: d.refreshedBy });
         setUsers((u.users || []).sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username)));
       })
@@ -57,11 +62,48 @@ export default function Departments({ onToast, onUnauthorized }) {
     }
   }
 
+  async function changeProcoreUser(username, procoreUserId) {
+    setSaving(username);
+    try {
+      await api.setProcoreUser(username, procoreUserId || null);
+      load();
+    } catch (e) {
+      if (e.unauthorized) unauthorized.current();
+      else onToast(e.message, true);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  // Links everyone not yet linked whose email (or email-style username)
+  // matches exactly one Procore employee's email. Never overwrites a link.
+  async function matchByEmail() {
+    setMatching(true);
+    let linked = 0;
+    try {
+      for (const u of users.filter((x) => !x.procoreUser)) {
+        const emails = [u.email, u.username].map((x) => (x || "").toLowerCase()).filter((x) => x.includes("@"));
+        const hits = procoreUsers.filter((p) => p.email && emails.includes(p.email));
+        if (hits.length === 1) {
+          await api.setProcoreUser(u.username, hits[0].id);
+          linked++;
+        }
+      }
+      onToast(linked ? `Linked ${linked} ${linked === 1 ? "person" : "people"} by email.` : "No new email matches.");
+      load();
+    } catch (e) {
+      if (e.unauthorized) unauthorized.current();
+      else onToast(e.message, true);
+    } finally {
+      setMatching(false);
+    }
+  }
+
   async function refresh() {
     setRefreshing(true);
     try {
       const r = await api.refreshDepartments();
-      onToast(`Loaded ${r.count} departments from Procore.`);
+      onToast(`Loaded ${r.count} departments and ${r.procoreUsers} Procore employees.`);
       load();
     } catch (e) {
       if (e.unauthorized) unauthorized.current();
@@ -71,6 +113,8 @@ export default function Departments({ onToast, onUnauthorized }) {
     }
   }
 
+  const linkedTo = {}; // procore user id → display names of people linked to it
+  for (const u of users) if (u.procoreUser) (linkedTo[u.procoreUser.id] = linkedTo[u.procoreUser.id] || []).push(u.displayName || u.username);
   const untied = departments.filter((d) => d.users.length === 0);
   const shared = departments.filter((d) => d.users.length > 1);
 
@@ -78,15 +122,23 @@ export default function Departments({ onToast, onUnauthorized }) {
     <>
       <div className="card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <div className="card-title" style={{ marginBottom: 0 }}>Departments</div>
-          <button className="btn btn-ghost btn-sm" onClick={refresh} disabled={refreshing}>
-            {refreshing ? "Refreshing…" : "Refresh from Procore"}
-          </button>
+          <div className="card-title" style={{ marginBottom: 0 }}>Procore links</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={matchByEmail} disabled={matching || !procoreUsers.length} title="Link everyone not yet linked whose email matches exactly one Procore employee">
+              {matching ? "Matching…" : "Match Procore users by email"}
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={refresh} disabled={refreshing}>
+              {refreshing ? "Refreshing…" : "Refresh from Procore"}
+            </button>
+          </div>
         </div>
         <div className="field-help" style={{ marginBottom: 14 }}>
-          Each person's Procore department. Apps open on this department by default, and only departments
-          tied to someone here can be written to Procore. {departments.length} departments in Procore,
-          last loaded {formatDateTime(meta.refreshedAt)}{meta.refreshedBy ? ` (${meta.refreshedBy})` : ""}.
+          Each person's Procore department and their own Procore user. Apps open on the department by
+          default, only departments tied to someone here can be written to Procore, and person pickers in the
+          apps (e.g. SCOUT's estimators) use the linked Procore user. {departments.length} departments and{" "}
+          {procoreUsers.length} active Procore employees, last loaded {formatDateTime(meta.refreshedAt)}
+          {meta.refreshedBy ? ` (${meta.refreshedBy})` : ""}.
+          {!procoreUsers.length && " Click Refresh from Procore to load the Procore users."}
         </div>
 
         {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
@@ -99,6 +151,7 @@ export default function Departments({ onToast, onUnauthorized }) {
                 <th>Name</th>
                 <th>Job role</th>
                 <th>Department</th>
+                <th>Procore user</th>
               </tr>
             </thead>
             <tbody>
@@ -121,6 +174,26 @@ export default function Departments({ onToast, onUnauthorized }) {
                         return (
                           <option key={d.id} value={d.id}>
                             {d.name}{others.length ? ` — ${others.map((x) => x.displayName || x.username).join(", ")}` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </td>
+                  <td>
+                    <select
+                      value={u.procoreUser?.id || ""}
+                      disabled={saving === u.username || (!procoreUsers.length && !u.procoreUser)}
+                      onChange={(e) => changeProcoreUser(u.username, e.target.value)}
+                    >
+                      <option value="">Not linked</option>
+                      {u.procoreUser && !procoreUsers.some((p) => p.id === u.procoreUser.id) && (
+                        <option value={u.procoreUser.id}>{u.procoreUser.name || u.procoreUser.id} (not in the latest list)</option>
+                      )}
+                      {procoreUsers.map((p) => {
+                        const others = (linkedTo[p.id] || []).filter((n) => n !== (u.displayName || u.username));
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.name}{p.email ? ` (${p.email})` : ""}{others.length ? ` — linked to ${others.join(", ")}` : ""}
                           </option>
                         );
                       })}
