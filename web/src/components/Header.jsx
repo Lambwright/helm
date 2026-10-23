@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getStoredToken } from "../auth.js";
-import { jobRoleLabel } from "../apps.js";
+import { jobRoleLabel, SUPER_ADMIN } from "../apps.js";
 
 // Same suite switcher every other app carries — keep the list and the
 // visibility rule below identical across apps.
@@ -87,9 +87,13 @@ export default function Header({ user, onLogout, onToast }) {
         <div className="header-user">
           <span className="header-username">{user.displayName || user.username}</span>
           {user.jobRole && <span className="header-role">{jobRoleLabel(user.jobRole)}</span>}
-          <button className="btn btn-ghost btn-sm" onClick={copyToken} title="Copy your current session token to the clipboard">
-            Copy token
-          </button>
+          {/* Super Admin only: a copied token is a live session, and only Ben
+              needs one (to hand to a Claude session). By role, not by name. */}
+          {user.jobRole === SUPER_ADMIN && (
+            <button className="btn btn-ghost btn-sm" onClick={copyToken} title="Copy your current session token to the clipboard">
+              Copy token
+            </button>
+          )}
           <button className="btn btn-ghost btn-sm" onClick={onLogout}>Log out</button>
         </div>
       )}
