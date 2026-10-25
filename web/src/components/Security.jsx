@@ -30,6 +30,12 @@ const OUTCOME_LABELS = {
   expired: "Session expired",
   revoked: "Session revoked",
   unauthorized: "Bad server key",
+  // reported by the apps themselves (type "app")
+  no_token: "No sign-in",
+  bad_session: "Bad/expired sign-in",
+  forbidden: "Not allowed",
+  bad_service_key: "Bad server key",
+  other: "Refused",
 };
 
 function outcomeLabel(e) {
