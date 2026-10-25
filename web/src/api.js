@@ -81,6 +81,10 @@ export const api = {
   setDepartment: (username, departmentId) => request("/auth/fields/set", { username, field: "department", value: departmentId }),
   procoreUsers: () => request("/auth/procore-users"), // { users: [{id, name, email}] (active Procore employees), refreshedAt }
   setProcoreUser: (username, procoreUserId) => request("/auth/fields/set", { username, field: "procore_user", value: procoreUserId }),
+  // Security tab: Super Admin or the HELM "Security dashboard" tool permission.
+  securitySummary: (days) => request("/auth/security/summary", { days }),
+  securityEvents: (filters) => request("/auth/security/events", filters),
+  securityTraffic: () => request("/auth/security/traffic"),
   linkOptions: () => request("/auth/link-options"), // { procore_user|rp_person|netsuite_employee: { list: [{id, name, email, company?}], refreshedAt } }
   setLink: (username, type, id) => request("/auth/fields/set", { username, field: type, value: id }),
   rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }

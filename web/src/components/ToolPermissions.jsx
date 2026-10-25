@@ -10,14 +10,19 @@ import ConfirmModal from "./ConfirmModal.jsx";
 // `appExtras`); the list of tools lives in the matrix (`apps[].extras`) so an
 // app's code and HELM agree on the id. A switch only works while the person
 // can open that app.
-export default function ToolPermissions({ matrix, users, onChanged, onToast }) {
+export default function ToolPermissions({ matrix, builtinExtras = {}, users, onChanged, onToast }) {
   const [busy, setBusy] = useState(null); // "username:APP:id"
   const [adding, setAdding] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null); // { app, extra, holders }
 
+  // App tool permissions from the matrix, then HELM's own (built in, fixed in
+  // code — they can be switched per person but not removed here).
   const tools = useMemo(
-    () => (matrix?.apps || []).flatMap((app) => (app.extras || []).map((x) => ({ app, x }))),
-    [matrix]
+    () => [
+      ...(matrix?.apps || []).flatMap((app) => (app.extras || []).map((x) => ({ app, x }))),
+      ...Object.entries(builtinExtras).flatMap(([id, list]) => list.map((x) => ({ app: { id, label: id }, x, builtin: true }))),
+    ],
+    [matrix, builtinExtras]
   );
   const people = useMemo(
     () => users.filter((u) => !u.disabled).sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username)),
@@ -27,7 +32,7 @@ export default function ToolPermissions({ matrix, users, onChanged, onToast }) {
   if (!matrix) return <div className="card"><div className="empty-state">No role matrix has been saved yet.</div></div>;
 
   const has = (u, appId, id) => !!u.appExtrasStored?.[appId]?.includes(id);
-  const canOpen = (u, appId) => u.jobRole === SUPER_ADMIN || (u.appRoles?.[appId] && u.appRoles[appId] !== NO_ACCESS);
+  const canOpen = (u, appId) => appId in builtinExtras || u.jobRole === SUPER_ADMIN || (u.appRoles?.[appId] && u.appRoles[appId] !== NO_ACCESS);
 
   async function toggle(u, appId, id) {
     const key = `${u.username}:${appId}:${id}`;
@@ -87,12 +92,12 @@ export default function ToolPermissions({ matrix, users, onChanged, onToast }) {
             <thead>
               <tr>
                 <th>Person</th>
-                {tools.map(({ app, x }) => (
+                {tools.map(({ app, x, builtin }) => (
                   <th key={`${app.id}:${x.id}`} style={{ textAlign: "center" }} title={`id: ${x.id}`}>
                     <div className="mono">{app.label}</div>
                     <div style={{ textTransform: "none", letterSpacing: 0 }}>
                       {x.label}{" "}
-                      <button
+                      {!builtin && <button
                         type="button"
                         className="btn btn-ghost btn-sm"
                         style={{ padding: "0 4px" }}
@@ -100,7 +105,7 @@ export default function ToolPermissions({ matrix, users, onChanged, onToast }) {
                         onClick={() => setRemoveTarget({ app, x, holders: people.filter((u) => has(u, app.id, x.id)) })}
                       >
                         ×
-                      </button>
+                      </button>}
                     </div>
                   </th>
                 ))}

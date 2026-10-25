@@ -11,6 +11,7 @@ import CrmOptions from "./components/CrmOptions.jsx";
 import MatrixEditor from "./components/MatrixEditor.jsx";
 import Departments from "./components/Departments.jsx";
 import ToolPermissions from "./components/ToolPermissions.jsx";
+import Security from "./components/Security.jsx";
 import Toast from "./components/Toast.jsx";
 import { SUPER_ADMIN } from "./apps.js";
 
@@ -21,12 +22,14 @@ const ADMIN_TABS = [
   { key: "users", label: "Users" },
   { key: "departments", label: "Linked ids" },
   { key: "matrix", label: "Role Matrix" },
+  { key: "security", label: "Security" },
   { key: "audit", label: "Audit Log" },
   { key: "crm-options", label: "CRM Options" },
   { key: "account", label: "My Account" },
 ];
 const USER_TABS = [{ key: "account", label: "My Account" }];
-const DEPARTMENT_EDITOR_TABS = [{ key: "departments", label: "Linked ids" }, ...USER_TABS];
+const DEPARTMENT_TAB = { key: "departments", label: "Linked ids" };
+const SECURITY_TAB = { key: "security", label: "Security" };
 
 export default function App() {
   const [authState, setAuthState] = useState("checking"); // checking | out | in
@@ -39,6 +42,7 @@ export default function App() {
   const [usersError, setUsersError] = useState(null);
 
   const [matrix, setMatrix] = useState(null);
+  const [builtinExtras, setBuiltinExtras] = useState({});
 
   const [auditEntries, setAuditEntries] = useState([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
@@ -78,6 +82,7 @@ export default function App() {
       .then(([data, m]) => {
         setUsers(data.users || []);
         setMatrix(m.matrix || null);
+        setBuiltinExtras(m.builtinExtras || {});
       })
       .catch((e) => {
         if (e.unauthorized) handleLogout();
@@ -139,7 +144,12 @@ export default function App() {
 
   const isAdmin = user?.jobRole === SUPER_ADMIN;
   const canEditDepartments = isAdmin || user?.jobRole === "admin";
-  const tabs = isAdmin ? ADMIN_TABS : canEditDepartments ? DEPARTMENT_EDITOR_TABS : USER_TABS;
+  // Non–Super Admins: Linked ids for the Admin job role, Security for anyone
+  // given HELM's "Security dashboard" tool permission, My Account for all.
+  const canSeeSecurity = isAdmin || !!user?.appExtras?.HELM?.includes("security_dashboard");
+  const tabs = isAdmin
+    ? ADMIN_TABS
+    : [...(canEditDepartments ? [DEPARTMENT_TAB] : []), ...(canSeeSecurity ? [SECURITY_TAB] : []), ...USER_TABS];
 
   return (
     <>
@@ -183,7 +193,7 @@ export default function App() {
           loadingUsers && !matrix ? (
             <div className="card"><div className="empty-state">Loading…</div></div>
           ) : (
-            <ToolPermissions matrix={matrix} users={users} onChanged={loadUsers} onToast={showToast} />
+            <ToolPermissions matrix={matrix} builtinExtras={builtinExtras} users={users} onChanged={loadUsers} onToast={showToast} />
           )
         )}
         {tab === "matrix" && isAdmin && matrixTab === "roles" && (
@@ -199,6 +209,7 @@ export default function App() {
             />
           )
         )}
+        {tab === "security" && canSeeSecurity && <Security onToast={showToast} onUnauthorized={handleLogout} />}
         {tab === "audit" && isAdmin && (
           <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />
         )}
