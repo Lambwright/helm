@@ -32,6 +32,7 @@ const ADMIN_ERROR_MESSAGES = {
   invalid_procore_user: "That Procore user isn't in the list any more — refresh from Procore.",
   invalid_rp_person: "That Resource Planning person isn't in the list any more — refresh the lists.",
   invalid_netsuite_employee: "That NetSuite employee isn't in the list any more — refresh the lists.",
+  invalid_timezone: "That isn't a time zone this system recognises.",
   invalid_department: "That department isn't in Procore's list any more — refresh the list.",
   procore_unavailable: "Couldn't reach Procore. Try again in a minute.",
   procore_empty: "Procore returned no departments, so the list was left as it was.",

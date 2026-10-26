@@ -3,12 +3,14 @@ import Modal from "./Modal.jsx";
 import { api } from "../api.js";
 import { SUPER_ADMIN } from "../apps.js";
 import RoleAccessEditor from "./RoleAccessEditor.jsx";
+import TimezoneSelect, { DEFAULT_TIMEZONE } from "./TimezoneSelect.jsx";
 
 export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved, onSetPassword }) {
   const [username, setUsername] = useState(user.username);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
+  const [timezone, setTimezone] = useState(user.timezone || DEFAULT_TIMEZONE);
   const [jobRole, setJobRole] = useState(user.jobRole || "project_manager");
   const [overrides, setOverrides] = useState(user.roleOverrides || {});
   const [legacyApps, setLegacyApps] = useState(new Set(user.legacyApps || []));
@@ -35,6 +37,7 @@ export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved, 
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
+        timezone,
         apps: Array.from(legacyApps),
       };
       if (!isSuperAdmin) {
@@ -72,6 +75,11 @@ export default function EditUserModal({ user, isSelf, matrix, onClose, onSaved, 
         <div className="field" style={{ marginBottom: 12 }}>
           <label htmlFor="edit-email">Email</label>
           <input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label htmlFor="edit-timezone">Time zone</label>
+          <TimezoneSelect id="edit-timezone" value={timezone} onChange={setTimezone} />
+          <span className="field-help">People can also set their own in My Account.</span>
         </div>
         {onSetPassword && !isSelf && (
           <div className="field" style={{ marginBottom: 12 }}>

@@ -7,7 +7,6 @@ import LoginScreen from "./components/LoginScreen.jsx";
 import UserList from "./components/UserList.jsx";
 import AuditLog from "./components/AuditLog.jsx";
 import MyAccount from "./components/MyAccount.jsx";
-import CrmOptions from "./components/CrmOptions.jsx";
 import MatrixEditor from "./components/MatrixEditor.jsx";
 import Departments from "./components/Departments.jsx";
 import ToolPermissions from "./components/ToolPermissions.jsx";
@@ -24,7 +23,6 @@ const ADMIN_TABS = [
   { key: "matrix", label: "Role Matrix" },
   { key: "security", label: "Security" },
   { key: "audit", label: "Audit Log" },
-  { key: "crm-options", label: "CRM Options" },
   { key: "account", label: "My Account" },
 ];
 const USER_TABS = [{ key: "account", label: "My Account" }];
@@ -213,7 +211,6 @@ export default function App() {
         {tab === "audit" && isAdmin && (
           <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />
         )}
-        {tab === "crm-options" && isAdmin && <CrmOptions onToast={showToast} />}
         {tab === "account" && (
           <MyAccount user={user} onUserUpdated={handleUserUpdated} onToast={showToast} />
         )}

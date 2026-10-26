@@ -2,12 +2,14 @@ import { useState } from "react";
 import { api } from "../api.js";
 import { APPS, levelLabel, jobRoleLabel } from "../apps.js";
 import { ACCENT_PRESETS, applyAccentPreset } from "../accentPresets.js";
+import TimezoneSelect, { DEFAULT_TIMEZONE } from "./TimezoneSelect.jsx";
 
 function ProfileSection({ user, onUserUpdated, onToast }) {
   const [username, setUsername] = useState(user.username);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
+  const [timezone, setTimezone] = useState(user.timezone || DEFAULT_TIMEZONE);
   const [currentPassword, setCurrentPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -20,7 +22,7 @@ function ProfileSection({ user, onUserUpdated, onToast }) {
     setBusy(true);
     setError(null);
     try {
-      const fields = { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim() };
+      const fields = { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), timezone };
       if (renaming) {
         fields.newUsername = username.trim();
         fields.currentPassword = currentPassword;
@@ -55,6 +57,11 @@ function ProfileSection({ user, onUserUpdated, onToast }) {
       <div className="field" style={{ marginBottom: 12 }}>
         <label htmlFor="my-email">Email</label>
         <input id="my-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="field" style={{ marginBottom: 12 }}>
+        <label htmlFor="my-timezone">Time zone</label>
+        <TimezoneSelect id="my-timezone" value={timezone} onChange={setTimezone} />
+        <span className="field-help">Used by the apps for what "today" and "overdue" mean for you.</span>
       </div>
       {renaming && (
         <div className="field" style={{ marginBottom: 12 }}>
