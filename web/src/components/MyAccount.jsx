@@ -186,7 +186,7 @@ function AppAccessSection({ user }) {
 // the app switcher.
 function themeableApps(user) {
   const granted = (user.apps || []).map((a) => String(a).toUpperCase());
-  return [...APPS.filter((app) => granted.includes(app.id)), { id: "HELM", label: "HELM" }];
+  return [...APPS.filter((app) => granted.includes(app.id)), { id: "HELM", label: user.helmName || "Settings" }];
 }
 
 function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {

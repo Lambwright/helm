@@ -22,7 +22,7 @@ export default function ForgotPasswordModal({ onClose }) {
           Self-service reset isn't set up yet
         </div>
         <div style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}>
-          Contact your HELM administrator directly and ask them to reset it for you
+          Contact your administrator directly and ask them to reset it for you
           from the Users tab.
         </div>
       </div>

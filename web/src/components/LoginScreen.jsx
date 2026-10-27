@@ -28,8 +28,10 @@ export default function LoginScreen({ onLoggedIn }) {
     <div className="login-screen">
       <form className="card login-card" onSubmit={handleSubmit}>
         <div className="header-badge" style={{ marginBottom: 24 }}>
-          <span className="header-badge-name">HELM</span>
-          <span className="header-badge-sub">Einbau ID Admin</span>
+          {/* Before sign-in we don't know who this is, so stay neutral: it's
+              "HELM" for admins and "Settings" for everyone else afterwards. */}
+          <span className="header-badge-name">Einbau ID</span>
+          <span className="header-badge-sub">Sign in</span>
           <span className="header-brand-tag">An Einbau Product</span>
         </div>
         <div className="field" style={{ marginBottom: 12 }}>

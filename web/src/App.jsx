@@ -129,6 +129,11 @@ export default function App() {
     setUser((prev) => ({ ...prev, ...updatedFields }));
   }
 
+  // Browser tab title follows what this person calls it.
+  useEffect(() => {
+    document.title = user ? `${user.helmName || "Settings"} — Einbau ID` : "Einbau ID";
+  }, [user]);
+
   if (authState === "checking") {
     return (
       <div className="login-screen">

@@ -13,8 +13,7 @@ const APP_LINKS = [
   { name: "LEDGER", url: "https://lambwright.github.io/ledger/" },
   { name: "CRM", url: "https://lambwright.github.io/crm/" },
 ];
-const HELM_LINK = { name: "HELM", url: "https://lambwright.github.io/helm/" };
-const CURRENT_APP = "HELM";
+const HELM_URL = "https://lambwright.github.io/helm/";
 
 // Only apps this user can open, then HELM always last (it's where settings
 // live). No apps granted = nothing but this app and HELM (access fails
@@ -22,9 +21,11 @@ const CURRENT_APP = "HELM";
 function appLinks(user) {
   const apps = (Array.isArray(user?.apps) ? user.apps : []).map((a) => String(a).toUpperCase());
   const allowed = (name) => apps.includes(name);
-  return [...APP_LINKS.filter((a) => a.name === CURRENT_APP || allowed(a.name)), HELM_LINK].map((a) => ({
+  // "HELM" or "Settings", per person (user.helmName from auth-worker).
+  const helmLink = { name: user?.helmName || "Settings", url: HELM_URL, current: true };
+  return [...APP_LINKS.filter((a) => allowed(a.name)), helmLink].map((a) => ({
     ...a,
-    current: a.name === CURRENT_APP,
+    current: !!a.current,
   }));
 }
 
@@ -63,9 +64,9 @@ export default function Header({ user, onLogout, onToast }) {
           style={{ cursor: "pointer" }}
           onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         >
-          HELM<span className="app-switcher-caret">▾</span>
+          {user?.helmName || "Settings"}<span className="app-switcher-caret">▾</span>
         </span>
-        <span className="header-badge-sub">Einbau ID Admin</span>
+        <span className="header-badge-sub">{user?.helmName === "HELM" ? "Einbau ID Admin" : "Einbau ID"}</span>
         <span className="header-brand-tag">An Einbau Product</span>
         {open && (
           <div className="app-switcher-menu">
