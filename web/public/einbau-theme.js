@@ -18,7 +18,16 @@
  *   --accent --accent-dark --accent-rgb --accent-contrast --accent-soft --accent-2
  *   --red --red-light --red-border --green --green-light --yellow --yellow-light
  *   --shadow-sm --shadow-md
- * and <html data-theme="dark|light" style="color-scheme: …">.
+ * Surface roles (use these for the big pieces so a chosen colour can take
+ * over the screen):
+ *   --header-bg --header-text --header-text-muted --header-name --header-strip
+ *   --btn-bg --btn-text --btn-2-bg --btn-2-text --btn-2-border
+ *   --tab-bg --tab-text --tab-border --tab-active-bg --tab-active-text --tab-active-border
+ *   --title-color --badge-bg --badge-text
+ * and <html data-theme="dark|light" data-accent="default|bold" style="color-scheme: …">.
+ * App default colour → "default": quiet surfaces, colour on details (unchanged
+ * look). A colour the person picked → "bold": filled header banner, filled
+ * buttons and tabs, coloured titles, with readable lettering on every fill.
  * Never hardcode a hex colour in an app: light mode will leave a dark patch.
  */
 (function () {
@@ -75,7 +84,45 @@
     return out;
   }
 
-  function palette(accentHex, accent2Hex, mode) {
+  // Best lettering for a fill: the second colour if it reads well on it
+  // (Packers gold on green), else white or near-black, whichever is stronger.
+  function letteringFor(fill, preferred) {
+    if (preferred && contrast(preferred, fill) >= 4.5) return preferred;
+    return contrast(fill, '#FFFFFF') >= contrast(fill, '#111315') ? '#FFFFFF' : '#111315';
+  }
+
+  // Quiet roles (app default colour): the look apps already have.
+  function quietRoles(p) {
+    return {
+      '--header-bg': p['--bg-header'], '--header-text': p['--text-primary'], '--header-text-muted': p['--text-secondary'],
+      '--header-name': p['--accent'], '--header-strip': p['--accent-2'],
+      '--btn-bg': p['--accent'], '--btn-text': p['--accent-contrast'],
+      '--btn-2-bg': p['--bg-card'], '--btn-2-text': p['--text-secondary'], '--btn-2-border': p['--border-input'],
+      '--tab-bg': p['--bg-card'], '--tab-text': p['--text-secondary'], '--tab-border': p['--border-color'],
+      '--tab-active-bg': p['--accent-soft'], '--tab-active-text': p['--accent'], '--tab-active-border': p['--accent'],
+      '--title-color': p['--text-tertiary'], '--badge-bg': 'transparent', '--badge-text': p['--accent'],
+    };
+  }
+
+  // Bold roles (a colour the person chose): the colour takes over.
+  function boldRoles(p, rawAccent, rawAccent2, mode) {
+    var main = rawAccent;                         // the team/brand colour as-is for fills
+    var second = rawAccent2 || mix(rawAccent, mode === 'light' ? '#000000' : '#000000', 0.70);
+    var headerText = letteringFor(main, rawAccent2);
+    var secondText = letteringFor(second, rawAccent);
+    var soft = mix(main, p['--bg-card'], mode === 'light' ? 0.22 : 0.30);
+    return {
+      '--header-bg': main, '--header-text': headerText, '--header-text-muted': mix(headerText, main, 0.75),
+      '--header-name': headerText, '--header-strip': second,
+      '--btn-bg': main, '--btn-text': letteringFor(main, null),
+      '--btn-2-bg': soft, '--btn-2-text': letteringFor(soft, null), '--btn-2-border': 'transparent',
+      '--tab-bg': soft, '--tab-text': letteringFor(soft, null), '--tab-border': 'transparent',
+      '--tab-active-bg': second, '--tab-active-text': secondText, '--tab-active-border': second,
+      '--title-color': p['--accent'], '--badge-bg': second, '--badge-text': secondText,
+    };
+  }
+
+  function palette(accentHex, accent2Hex, mode, bold) {
     var dark = mode !== 'light';
     var p = {};
     if (dark) {
@@ -123,6 +170,8 @@
     p['--red-border'] = mix(p['--red'], p['--bg-card'], 0.45);
     p['--green-light'] = mix(p['--green'], p['--bg-card'], 0.12);
     p['--yellow-light'] = mix(p['--yellow'], p['--bg-card'], 0.12);
+    var roles = bold ? boldRoles(p, accentHex, accent2Hex, dark ? 'dark' : 'light') : quietRoles(p);
+    for (var r in roles) p[r] = roles[r];
     return p;
   }
 
@@ -146,10 +195,11 @@
   function paint(opts) {
     var preset = presetFor(opts.app, opts.user);
     var mode = resolveMode(opts.user);
-    var p = palette(preset ? preset.accent : (opts.defaultAccent || '#9BA8B5'), preset ? preset.accent2 : null, mode);
+    var p = palette(preset ? preset.accent : (opts.defaultAccent || '#9BA8B5'), preset ? preset.accent2 : null, mode, !!preset);
     var root = document.documentElement;
     for (var k in p) root.style.setProperty(k, p[k]);
     root.setAttribute('data-theme', mode);
+    root.setAttribute('data-accent', preset ? 'bold' : 'default');
     root.style.colorScheme = mode;
     return { mode: mode, preset: preset ? preset.id : null };
   }
@@ -174,7 +224,7 @@
   }
 
   window.EinbauTheme = {
-    version: '2026-10-27',
+    version: '2026-10-28',
     PRESETS: PRESETS,
     MODES: [
       { id: 'system', label: 'Match my device' },
@@ -186,7 +236,7 @@
     palette: function (presetIdOrHex, mode) {
       var pr = null;
       for (var i = 0; i < PRESETS.length; i++) if (PRESETS[i].id === presetIdOrHex) pr = PRESETS[i];
-      return palette(pr ? pr.accent : presetIdOrHex, pr ? pr.accent2 : null, mode || 'dark');
+      return palette(pr ? pr.accent : presetIdOrHex, pr ? pr.accent2 : null, mode || 'dark', !!pr);
     },
   };
 })();
