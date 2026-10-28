@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import Loading from "./Loading.jsx";
 
 // Super Admin, or anyone with HELM's "Security dashboard" tool permission.
 // Sign-ins, refused requests, admin changes and per-app traffic. Data comes
@@ -80,7 +81,7 @@ export default function Security({ onToast, onUnauthorized }) {
 
   useEffect(load, [load]);
 
-  if (loading && !summary) return <div className="card"><div className="empty-state">Loading…</div></div>;
+  if (loading && !summary) return <div className="card"><Loading /></div>;
   if (error && !summary) return <div className="card"><div className="login-error">{error}</div></div>;
 
   const c = summary?.counts || {};

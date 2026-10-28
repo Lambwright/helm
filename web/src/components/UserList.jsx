@@ -6,6 +6,7 @@ import CreateUserModal from "./CreateUserModal.jsx";
 import EditUserModal from "./EditUserModal.jsx";
 import SetPasswordModal from "./SetPasswordModal.jsx";
 import ConfirmModal from "./ConfirmModal.jsx";
+import Loading from "./Loading.jsx";
 
 // Short dates for the table: the year only when it isn't this year. The full
 // date and time are in the cell's tooltip.
@@ -158,7 +159,7 @@ export default function UserList({ users, matrix, currentUsername, loading, erro
 
       {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
       {loading ? (
-        <div className="empty-state">Loading…</div>
+        <Loading />
       ) : users.length === 0 ? (
         <div className="empty-state">No users yet.</div>
       ) : (

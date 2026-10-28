@@ -12,6 +12,7 @@ import Departments from "./components/Departments.jsx";
 import ToolPermissions from "./components/ToolPermissions.jsx";
 import Security from "./components/Security.jsx";
 import Toast from "./components/Toast.jsx";
+import Loading from "./components/Loading.jsx";
 import { SUPER_ADMIN } from "./apps.js";
 
 // Everything except My Account is Super Admin only (Ben) — see the role matrix
@@ -133,6 +134,11 @@ export default function App() {
     if (user) applyTheme(user);
   }, [user]);
 
+  // Seasonal decorations (bats, cobwebs, snow…) once we know what to draw on.
+  useEffect(() => {
+    if (authState !== "checking") window.EinbauFestive?.init({ app: "HELM" });
+  }, [authState]);
+
   // Browser tab title follows what this person calls it.
   useEffect(() => {
     document.title = user ? `${user.helmName || "Settings"} — Einbau ID` : "Einbau ID";
@@ -141,7 +147,7 @@ export default function App() {
   if (authState === "checking") {
     return (
       <div className="login-screen">
-        <span className="spinner-inline">Checking session…</span>
+        <Loading />
       </div>
     );
   }
@@ -198,14 +204,14 @@ export default function App() {
         )}
         {tab === "matrix" && isAdmin && matrixTab === "tools" && (
           loadingUsers && !matrix ? (
-            <div className="card"><div className="empty-state">Loading…</div></div>
+            <div className="card"><Loading /></div>
           ) : (
             <ToolPermissions matrix={matrix} builtinExtras={builtinExtras} users={users} onChanged={loadUsers} onToast={showToast} />
           )
         )}
         {tab === "matrix" && isAdmin && matrixTab === "roles" && (
           loadingUsers && !matrix ? (
-            <div className="card"><div className="empty-state">Loading…</div></div>
+            <div className="card"><Loading /></div>
           ) : (
             <MatrixEditor
               key={matrix?.updatedAt || "none"}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { jobRoleLabel } from "../apps.js";
+import Loading from "./Loading.jsx";
 
 function formatDateTime(iso) {
   if (!iso) return "never";
@@ -159,7 +160,7 @@ export default function Departments({ onToast, onUnauthorized }) {
 
         {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
         {loading && !users.length ? (
-          <div className="empty-state">Loading…</div>
+          <Loading />
         ) : (
           <table className="table">
             <thead>

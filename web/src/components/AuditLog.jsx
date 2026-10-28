@@ -1,3 +1,5 @@
+import Loading from "./Loading.jsx";
+
 function formatDateTime(iso) {
   if (!iso) return "—";
   try {
@@ -30,7 +32,7 @@ export default function AuditLog({ entries, loading, error, onRefresh }) {
 
       {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
       {loading ? (
-        <div className="empty-state">Loading…</div>
+        <Loading />
       ) : entries.length === 0 ? (
         <div className="empty-state">No audit entries yet.</div>
       ) : (
