@@ -1,28 +1,22 @@
-// Personal accent overrides for "My Account" → Appearance. Applied by setting
-// the same three CSS custom properties theme.css defines on :root, so nothing
-// else in the app needs to know a preference is active.
-export const ACCENT_PRESETS = [
-  { id: "tungsten", label: "Tungsten", accent: "#9BA8B5", accentDark: "#7A8794", rgb: "155, 168, 181" },
-  { id: "amber", label: "Amber", accent: "#D1A93F", accentDark: "#A6842F", rgb: "209, 169, 63" },
-  { id: "crimson", label: "Crimson", accent: "#D14343", accentDark: "#A63333", rgb: "209, 67, 67" },
-  { id: "forest", label: "Forest", accent: "#6FB35C", accentDark: "#559244", rgb: "111, 179, 92" },
-  { id: "violet", label: "Violet", accent: "#9B7ED1", accentDark: "#7C5FA8", rgb: "155, 126, 209" },
-  { id: "teal", label: "Teal", accent: "#3F9EA0", accentDark: "#2F7B7D", rgb: "63, 158, 160" },
-  { id: "rose", label: "Rose", accent: "#D1618F", accentDark: "#A64A70", rgb: "209, 97, 143" },
-  { id: "indigo", label: "Indigo", accent: "#6C7BD1", accentDark: "#55639F", rgb: "108, 123, 209" },
-  { id: "copper", label: "Copper", accent: "#C97D4F", accentDark: "#A2623C", rgb: "201, 125, 79" },
-];
+// HELM uses the suite-wide theme file (public/einbau-theme.js, served at
+// https://lambwright.github.io/helm/einbau-theme.js and loaded by index.html),
+// the same one every other app loads — so colours and light/dark behave the
+// same everywhere. Per person: user.themeAccent = { APP: presetId } (one colour
+// per app) and user.themeMode = 'system' | 'dark' | 'light' (all apps).
+export const HELM_DEFAULT_ACCENT = "#9BA8B5"; // tungsten
 
-export function applyAccentPreset(presetId) {
-  const preset = ACCENT_PRESETS.find((p) => p.id === presetId);
-  const root = document.documentElement.style;
-  if (!preset) {
-    root.removeProperty("--accent");
-    root.removeProperty("--accent-dark");
-    root.removeProperty("--accent-rgb");
-    return;
-  }
-  root.setProperty("--accent", preset.accent);
-  root.setProperty("--accent-dark", preset.accentDark);
-  root.setProperty("--accent-rgb", preset.rgb);
+const T = () => window.EinbauTheme;
+export const ACCENT_PRESETS = T()?.PRESETS || [];
+export const THEME_MODES = T()?.MODES || [];
+
+export function applyTheme(user) {
+  T()?.apply({ app: "HELM", defaultAccent: HELM_DEFAULT_ACCENT, user: user || null });
 }
+
+// Signed out: back to HELM's default colour, following the device's light/dark.
+export function resetTheme() {
+  T()?.reset();
+}
+
+// Before anyone signs in (the sign-in screen).
+applyTheme(null);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getStoredToken, verify, logout as doLogout } from "./auth.js";
 import { api } from "./api.js";
-import { applyAccentPreset } from "./accentPresets.js";
+import { applyTheme, resetTheme } from "./accentPresets.js";
 import Header from "./components/Header.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import UserList from "./components/UserList.jsx";
@@ -57,7 +57,6 @@ export default function App() {
     verify(token).then((data) => {
       if (data.valid) {
         setUser(data.user);
-        if (data.user.themeAccent?.HELM) applyAccentPreset(data.user.themeAccent.HELM);
         setAuthState("in");
         setTab(data.user.jobRole === SUPER_ADMIN ? "users" : "account");
       } else {
@@ -110,7 +109,6 @@ export default function App() {
 
   function handleLoggedIn(u) {
     setUser(u);
-    if (u.themeAccent?.HELM) applyAccentPreset(u.themeAccent.HELM);
     setAuthState("in");
     setTab(u.jobRole === SUPER_ADMIN ? "users" : "account");
   }
@@ -121,13 +119,19 @@ export default function App() {
   // click on Log out. See auth-worker/README.md's themeAccent section.
   function handleLogout() {
     doLogout();
-    applyAccentPreset(null);
+    resetTheme();
     setUser(null);
     setAuthState("out");
   }
   function handleUserUpdated(updatedFields) {
     setUser((prev) => ({ ...prev, ...updatedFields }));
   }
+
+  // Colours and light/dark follow the signed-in person's choices, re-applied
+  // whenever they change them in My Account.
+  useEffect(() => {
+    if (user) applyTheme(user);
+  }, [user]);
 
   // Browser tab title follows what this person calls it.
   useEffect(() => {

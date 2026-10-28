@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../api.js";
 import { APPS, levelLabel, jobRoleLabel } from "../apps.js";
-import { ACCENT_PRESETS, applyAccentPreset } from "../accentPresets.js";
+import { ACCENT_PRESETS, THEME_MODES } from "../accentPresets.js";
 import TimezoneSelect, { DEFAULT_TIMEZONE } from "./TimezoneSelect.jsx";
 
 function ProfileSection({ user, onUserUpdated, onToast }) {
@@ -194,7 +194,6 @@ function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {
 
   async function choose(presetId) {
     setBusy(presetId || "clear");
-    if (appId === "HELM") applyAccentPreset(presetId);
     try {
       const data = await api.setAppAccent(appId, presetId);
       onUserUpdated(data.user);
@@ -232,8 +231,50 @@ function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {
               borderColor: current === preset.id ? preset.accent : undefined,
             }}
           >
-            <span style={{ width: 11, height: 11, borderRadius: "50%", background: preset.accent, display: "inline-block" }} />
+            <span
+              style={{
+                width: 12, height: 12, borderRadius: "50%", display: "inline-block",
+                background: preset.accent2 ? `linear-gradient(90deg, ${preset.accent} 50%, ${preset.accent2} 50%)` : preset.accent,
+              }}
+            />
             {preset.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Light/dark for every app at once. "Match my device" (the default) follows
+// the computer's or phone's own setting.
+function ModeRow({ user, onUserUpdated, onToast }) {
+  const [busy, setBusy] = useState(null);
+  const current = user.themeMode || "system";
+  async function choose(mode) {
+    setBusy(mode);
+    try {
+      const data = await api.updateProfile({ themeMode: mode });
+      onUserUpdated(data.user);
+      onToast(`Appearance: ${THEME_MODES.find((m) => m.id === mode)?.label || mode}.`);
+    } catch (err) {
+      onToast(err.message, true);
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Light or dark (all apps)</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {THEME_MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className={`btn btn-sm ${current === m.id ? "btn-accent" : "btn-ghost"}`}
+            disabled={busy !== null}
+            onClick={() => choose(m.id)}
+          >
+            {m.label}
           </button>
         ))}
       </div>
@@ -245,9 +286,11 @@ function AppearanceSection({ user, onUserUpdated, onToast }) {
   const themeAccent = user.themeAccent || {};
   return (
     <div>
+      <ModeRow user={user} onUserUpdated={onUserUpdated} onToast={onToast} />
       <div className="field-help" style={{ marginBottom: 14 }}>
-        A color per app — pick one for HELM, a different one for TALLY, and so on. Nothing here affects
-        anyone else's account.
+        A colour per app — pick one here, a different one for TALLY, and so on. It changes the whole app
+        (headers, tabs, buttons, highlights) and follows you to any computer. Nothing here affects anyone
+        else's account.
       </div>
       {themeableApps(user).map((app) => (
         <AppearanceRow

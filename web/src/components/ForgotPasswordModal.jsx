@@ -9,7 +9,7 @@ export default function ForgotPasswordModal({ onClose }) {
     <Modal title="Forgot your password?" onClose={onClose}>
       <div
         style={{
-          background: "rgba(209,169,63,0.1)",
+          background: "var(--yellow-light, rgba(209,169,63,0.1))",
           border: "1px solid var(--yellow)",
           borderRadius: "var(--radius-md)",
           padding: "20px",
