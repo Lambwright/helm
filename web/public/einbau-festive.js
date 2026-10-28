@@ -3,6 +3,10 @@
  *   https://lambwright.github.io/helm/einbau-festive.js
  *
  *   EinbauFestive.init({ app: 'TALLY' })          // once, after the page loads
+ *     options for narrow/embedded pages (e.g. the LEDGER Procore sidebar):
+ *       bottom: false      — no bats along the bottom
+ *       bottomZ: 40        — put the bottom bats + bottom-corner webs at this
+ *                            z-index, e.g. under a fixed bottom action bar
  *   const l = EinbauFestive.loader(el, { size })  // anything loading → l.done() / l.stalled() / l.remove()
  *   EinbauFestive.phrase()                        // a loading line for the season, if you need text only
  *
@@ -241,11 +245,13 @@
     initialised = true;
     var go = function () {
       if (s === 'halloween') {
+        var bottomZ = opts && typeof opts.bottomZ === 'number' ? String(opts.bottomZ) : null;
         ['tl', 'tr', 'bl', 'br'].forEach(function (c) {
           var size = Math.round(rnd(110, 180));
           var d = document.createElement('div');
           d.className = 'ef-deco ef-web ' + c;
           d.style.setProperty('--ef-s', size + 'px');
+          if (bottomZ && (c === 'bl' || c === 'br')) d.style.zIndex = bottomZ;
           d.setAttribute('aria-hidden', 'true');
           d.innerHTML = web(size);
           document.body.appendChild(d);
@@ -265,10 +271,13 @@
           document.body.appendChild(top);
           batsInto(top, Math.round(rnd(4, 7)), [26, 48]);
         }
-        var bottom = document.createElement('div');
-        bottom.className = 'ef-band bottom';
-        document.body.appendChild(bottom);
-        batsInto(bottom, Math.round(rnd(3, 5)), [22, 40]);
+        if (!opts || opts.bottom !== false) {
+          var bottom = document.createElement('div');
+          bottom.className = 'ef-band bottom';
+          if (bottomZ) bottom.style.zIndex = bottomZ;
+          document.body.appendChild(bottom);
+          batsInto(bottom, Math.round(rnd(3, 5)), [22, 40]);
+        }
         sprinkle();
         watchForNewScreens();
       } else if (s === 'christmas') {
