@@ -51,6 +51,12 @@
     { id: 'steelers', label: 'Steelers black & gold', accent: '#FFB612', accent2: '#101820' },
     { id: 'ferrari', label: 'Ferrari rosso', accent: '#DC0000', accent2: '#FFF200' },
     { id: 'mclaren', label: 'McLaren papaya', accent: '#FF8000', accent2: '#47C7FC' },
+    // Secret colours (hidden: true) — not listed for everyone; the Super Admin
+    // sees them now, others will unlock them through achievements. `text`
+    // forces the banner lettering (Hot Dog Stand must be yellow on red).
+    { id: 'hotdog', label: 'Hot Dog Stand', accent: '#FF0000', accent2: '#FFFF00', text: '#FFFF00', hidden: true },
+    { id: 'miamivice', label: 'Miami Vice', accent: '#0BBFB0', accent2: '#FF5DA2', hidden: true },
+    { id: 'vaporwave', label: 'Vaporwave', accent: '#FF71CE', accent2: '#01CDFE', hidden: true },
   ];
 
   // ---------- colour maths ----------
@@ -105,10 +111,10 @@
   }
 
   // Bold roles (a colour the person chose): the colour takes over.
-  function boldRoles(p, rawAccent, rawAccent2, mode) {
+  function boldRoles(p, rawAccent, rawAccent2, mode, forcedText) {
     var main = rawAccent;                         // the team/brand colour as-is for fills
     var second = rawAccent2 || mix(rawAccent, mode === 'light' ? '#000000' : '#000000', 0.70);
-    var headerText = letteringFor(main, rawAccent2);
+    var headerText = forcedText || letteringFor(main, rawAccent2);
     var secondText = letteringFor(second, rawAccent);
     var soft = mix(main, p['--bg-card'], mode === 'light' ? 0.22 : 0.30);
     return {
@@ -122,7 +128,7 @@
     };
   }
 
-  function palette(accentHex, accent2Hex, mode, bold) {
+  function palette(accentHex, accent2Hex, mode, bold, forcedText) {
     var dark = mode !== 'light';
     var p = {};
     if (dark) {
@@ -170,7 +176,7 @@
     p['--red-border'] = mix(p['--red'], p['--bg-card'], 0.45);
     p['--green-light'] = mix(p['--green'], p['--bg-card'], 0.12);
     p['--yellow-light'] = mix(p['--yellow'], p['--bg-card'], 0.12);
-    var roles = bold ? boldRoles(p, accentHex, accent2Hex, dark ? 'dark' : 'light') : quietRoles(p);
+    var roles = bold ? boldRoles(p, accentHex, accent2Hex, dark ? 'dark' : 'light', forcedText) : quietRoles(p);
     for (var r in roles) p[r] = roles[r];
     return p;
   }
@@ -195,7 +201,7 @@
   function paint(opts) {
     var preset = presetFor(opts.app, opts.user);
     var mode = resolveMode(opts.user);
-    var p = palette(preset ? preset.accent : (opts.defaultAccent || '#9BA8B5'), preset ? preset.accent2 : null, mode, !!preset);
+    var p = palette(preset ? preset.accent : (opts.defaultAccent || '#9BA8B5'), preset ? preset.accent2 : null, mode, !!preset, preset ? preset.text : null);
     var root = document.documentElement;
     for (var k in p) root.style.setProperty(k, p[k]);
     root.setAttribute('data-theme', mode);
@@ -236,7 +242,7 @@
     palette: function (presetIdOrHex, mode) {
       var pr = null;
       for (var i = 0; i < PRESETS.length; i++) if (PRESETS[i].id === presetIdOrHex) pr = PRESETS[i];
-      return palette(pr ? pr.accent : presetIdOrHex, pr ? pr.accent2 : null, mode || 'dark', !!pr);
+      return palette(pr ? pr.accent : presetIdOrHex, pr ? pr.accent2 : null, mode || 'dark', !!pr, pr ? pr.text : null);
     },
   };
 })();

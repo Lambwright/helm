@@ -189,7 +189,13 @@ function themeableApps(user) {
   return [...APPS.filter((app) => granted.includes(app.id)), { id: "HELM", label: user.helmName || "Settings" }];
 }
 
-function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {
+// Secret colours (hidden presets) show for the Super Admin for now; everyone
+// else will unlock them through achievements later.
+function visiblePresets(user) {
+  return ACCENT_PRESETS.filter((p) => !p.hidden || user.jobRole === "superadmin");
+}
+
+function AppearanceRow({ appId, label, current, presets, onUserUpdated, onToast }) {
   const [busy, setBusy] = useState(null); // preset id currently saving, or "clear"
 
   async function choose(presetId) {
@@ -219,7 +225,7 @@ function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {
         >
           Default
         </button>
-        {ACCENT_PRESETS.map((preset) => (
+        {presets.map((preset) => (
           <button
             key={preset.id}
             type="button"
@@ -237,7 +243,7 @@ function AppearanceRow({ appId, label, current, onUserUpdated, onToast }) {
                 background: preset.accent2 ? `linear-gradient(90deg, ${preset.accent} 50%, ${preset.accent2} 50%)` : preset.accent,
               }}
             />
-            {preset.label}
+            {preset.label}{preset.hidden ? " ✦" : ""}
           </button>
         ))}
       </div>
@@ -298,6 +304,7 @@ function AppearanceSection({ user, onUserUpdated, onToast }) {
           appId={app.id}
           label={app.label}
           current={themeAccent[app.id] || null}
+          presets={visiblePresets(user)}
           onUserUpdated={onUserUpdated}
           onToast={onToast}
         />
