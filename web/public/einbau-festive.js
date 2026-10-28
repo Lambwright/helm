@@ -4,9 +4,14 @@
  *
  *   EinbauFestive.init({ app: 'TALLY' })          // once, after the page loads
  *     options for narrow/embedded pages (e.g. the LEDGER Procore sidebar):
- *       bottom: false      — no bats along the bottom
- *       bottomZ: 40        — put the bottom bats + bottom-corner webs at this
- *                            z-index, e.g. under a fixed bottom action bar
+ *       bottom: false      — no bats at the foot of the page
+ *       bottomZ: 40        — z-index for the bottom-corner webs (e.g. under a
+ *                            fixed bottom action bar)
+ *       topWebs: false     — no webs in the top corners of the window
+ *   EinbauFestive.hide() / .show()  // drop / bring back all decorations, e.g.
+ *                                   // hide() on sub-screens, show() on the main menu
+ *   "An Einbau Product" anywhere on the page reads "A Spooky Einbau Product"
+ *   (Halloween) / "A Festive Einbau Product" (Christmas).
  *   const l = EinbauFestive.loader(el, { size })  // anything loading → l.done() / l.stalled() / l.remove()
  *   EinbauFestive.phrase()                        // a loading line for the season, if you need text only
  *   EinbauFestive.phrase({ short: true })         // one word, for tiny buttons ("Boo…", "Wrapping…")
@@ -64,25 +69,64 @@
   }
 
   // ---------- artwork ----------
-  var BAT = '<svg viewBox="0 0 64 28" xmlns="http://www.w3.org/2000/svg"><path class="ef-wing" d="M32 10c-2-4-5-6-9-6 1 2 1 4 0 6-3-3-8-4-12-3 2 2 3 4 3 7-4-1-9 0-12 3 5 0 9 2 12 5 3-2 7-3 11-2 2 1 4 3 5 5 1-2 3-4 5-5 4-1 8 0 11 2 3-3 7-5 12-5-3-3-8-4-12-3 0-3 1-5 3-7-4-1-9 0-12 3-1-2-1-4 0-6-4 0-7 2-9 6z" fill="currentColor"/><circle cx="29.5" cy="12" r="0.9" fill="#ffcf4a"/><circle cx="34.5" cy="12" r="0.9" fill="#ffcf4a"/></svg>';
-  function web(size) {
-    // A corner cobweb: spokes from the corner plus sagging threads between them.
-    var s = size, spokes = [0, 18, 36, 54, 72, 90], rings = [0.22, 0.42, 0.62, 0.82, 1];
+  // A cartoon bat (Ben's reference): round head with ears, big googly eyes,
+  // scalloped wings. Holds still.
+  var BAT = '<svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg">'
+    + '<path d="M40 14 C30 6 18 4 2 10 C8 14 9 20 7 26 C12 22 17 23 20 28 C23 23 28 23 31 27 C33 23 36 22 40 24 C44 22 47 23 49 27 C52 23 57 23 60 28 C63 23 68 22 73 26 C71 20 72 14 78 10 C62 4 50 6 40 14 Z" fill="currentColor"/>'
+    + '<path d="M32 9 L34 1 L38 8 Z M48 9 L46 1 L42 8 Z" fill="currentColor"/>'
+    + '<ellipse cx="40" cy="15" rx="9" ry="8.5" fill="currentColor"/>'
+    + '<ellipse cx="40" cy="25" rx="6" ry="7" fill="currentColor"/>'
+    + '<circle cx="36.3" cy="14" r="3.4" fill="#fff"/><circle cx="43.7" cy="14" r="3.4" fill="#fff"/>'
+    + '<circle cx="37" cy="14.6" r="1.6" fill="#111"/><circle cx="43" cy="14.6" r="1.6" fill="#111"/>'
+    + '</svg>';
+
+  // Small seeded random generator, so a "random" web is the same web every
+  // time for the same seed (same corner → same web on every page and app).
+  function seeded(seed) {
+    var t = seed >>> 0;
+    return function () {
+      t += 0x6D2B79F5;
+      var r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function yearSeed() { return new Date().getFullYear() * 7 + (season() === 'christmas' ? 3 : 1); }
+
+  // A corner cobweb W×H with its anchor at the top-left; every seed gives a
+  // slightly different web (spoke count/angles, ring spacing, sag, a broken
+  // thread or two). spider: a still spider hanging off it.
+  function web(w, h, seed, spider) {
+    var R = seeded(seed || 1);
+    h = h || w;
+    var n = 5 + Math.floor(R() * 4); // 5–8 spokes
+    var spokes = [];
+    for (var i = 0; i < n; i++) {
+      var base = (90 / (n - 1)) * i, jitter = (i === 0 || i === n - 1) ? 0 : (R() - 0.5) * (60 / n);
+      spokes.push((base + jitter) * Math.PI / 180);
+    }
+    var ringCount = 4 + Math.floor(R() * 3), rings = [], k = 0;
+    for (var j = 0; j < ringCount; j++) { k += (1 - k) / (ringCount - j) * (0.75 + R() * 0.5); rings.push(Math.min(k, 1)); }
+    var sag = 0.72 + R() * 0.14;
+    var pt = function (a, r) { return [Math.cos(a) * w * r, Math.sin(a) * h * r]; };
     var d = '';
-    spokes.forEach(function (a) {
-      var r = a * Math.PI / 180;
-      d += 'M0 0L' + (Math.cos(r) * s).toFixed(1) + ' ' + (Math.sin(r) * s).toFixed(1);
-    });
-    rings.forEach(function (k) {
+    spokes.forEach(function (a) { var p = pt(a, 1); d += 'M0 0L' + p[0].toFixed(1) + ' ' + p[1].toFixed(1); });
+    rings.forEach(function (r) {
       for (var i = 0; i < spokes.length - 1; i++) {
-        var a1 = spokes[i] * Math.PI / 180, a2 = spokes[i + 1] * Math.PI / 180, am = (a1 + a2) / 2;
-        var x1 = Math.cos(a1) * s * k, y1 = Math.sin(a1) * s * k, x2 = Math.cos(a2) * s * k, y2 = Math.sin(a2) * s * k;
-        var cx = Math.cos(am) * s * k * 0.78, cy = Math.sin(am) * s * k * 0.78;
-        d += 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + 'Q' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1);
+        if (R() < 0.07) continue; // a broken thread
+        var a1 = spokes[i], a2 = spokes[i + 1], am = (a1 + a2) / 2;
+        var p1 = pt(a1, r), p2 = pt(a2, r), c = pt(am, r * (sag + (R() - 0.5) * 0.06));
+        d += 'M' + p1[0].toFixed(1) + ' ' + p1[1].toFixed(1) + 'Q' + c[0].toFixed(1) + ' ' + c[1].toFixed(1) + ' ' + p2[0].toFixed(1) + ' ' + p2[1].toFixed(1);
       }
     });
-    return '<svg viewBox="0 0 ' + s + ' ' + s + '" width="' + s + '" height="' + s + '" xmlns="http://www.w3.org/2000/svg"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>'
-      + '<g class="ef-spider"><line x1="' + (s * 0.55) + '" y1="' + (s * 0.3) + '" x2="' + (s * 0.55) + '" y2="' + (s * 0.55) + '" stroke="currentColor" stroke-width="0.8"/><circle cx="' + (s * 0.55) + '" cy="' + (s * 0.58) + '" r="3.2" fill="currentColor"/></g></svg>';
+    var sw = (0.8 + R() * 0.35).toFixed(2);
+    var sp = '';
+    if (spider) {
+      var sx = w * (0.45 + R() * 0.2), sy = h * (0.5 + R() * 0.2);
+      sp = '<line x1="' + sx.toFixed(1) + '" y1="' + (sy - h * 0.25).toFixed(1) + '" x2="' + sx.toFixed(1) + '" y2="' + sy.toFixed(1) + '" stroke="currentColor" stroke-width="0.8"/>'
+        + '<circle cx="' + sx.toFixed(1) + '" cy="' + (sy + 3).toFixed(1) + '" r="3.2" fill="currentColor"/>';
+    }
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="' + sw + '" stroke-linecap="round"/>' + sp + '</svg>';
   }
 
   // The typing creature (TALLY's ClaudeTyping, shared). Costumes per season.
@@ -123,26 +167,19 @@
 
   // ---------- styles ----------
   var CSS = ''
-    + '.ef-deco{position:fixed;pointer-events:none;z-index:250;color:#d8d8d8;opacity:.42}'
+    + '.ef-deco{position:fixed;pointer-events:none;z-index:250;color:#d8d8d8;opacity:.42;line-height:0}'
     + '[data-theme="light"] .ef-deco{color:#555;opacity:.5}'
-    + '.ef-web{width:var(--ef-s);height:var(--ef-s)}'
-    + '.ef-web.tl{top:0;left:0}.ef-web.tr{top:0;right:0;transform:scaleX(-1)}.ef-web.bl{bottom:0;left:0;transform:scaleY(-1)}.ef-web.br{bottom:0;right:0;transform:scale(-1,-1)}'
-    + '.ef-mini{position:absolute;pointer-events:none;z-index:5;width:var(--ef-s);height:var(--ef-s);color:#d8d8d8;opacity:.55;line-height:0}'
-    + '[data-theme="light"] .ef-mini{color:#555;opacity:.55}'
+    + '.ef-web.tl{left:0}.ef-web.tr{right:0;transform:scaleX(-1)}.ef-web.bl{bottom:0;left:0;transform:scaleY(-1)}.ef-web.br{bottom:0;right:0;transform:scale(-1,-1)}'
+    + '.ef-mini,.ef-logoweb{position:absolute;pointer-events:none;z-index:5;color:#d8d8d8;opacity:.55;line-height:0}'
+    + '[data-theme="light"] .ef-mini,[data-theme="light"] .ef-logoweb{color:#555;opacity:.55}'
+    + '.ef-logoweb{z-index:-1}'
     + '.ef-mini.tl{top:-3px;left:-3px}.ef-mini.tr{top:-3px;right:-3px;transform:scaleX(-1)}.ef-mini.bl{bottom:-3px;left:-3px;transform:scaleY(-1)}.ef-mini.br{bottom:-3px;right:-3px;transform:scale(-1,-1)}'
-    + '.ef-mini .ef-spider{display:none}'
     + '.ef-bats{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:-1}'
-    + '.ef-band .ef-bats{z-index:0}'
-    + '.ef-band{position:fixed;left:0;right:0;height:56px;pointer-events:none;z-index:240}.ef-band.bottom{bottom:0}'
+    + '.ef-footer{position:relative;height:64px;pointer-events:none;overflow:hidden}.ef-footer .ef-bats{z-index:0}'
     + '.ef-bat{position:absolute;color:#0b0b0d;opacity:.95}'
-    + '[data-theme="dark"] .ef-bat{filter:drop-shadow(0 0 3px rgba(255,140,30,.75)) drop-shadow(0 0 1px rgba(255,140,30,.9))}'
+    + '[data-theme="dark"] .ef-bat{filter:drop-shadow(0 0 3px rgba(255,140,30,.7)) drop-shadow(0 0 1px rgba(255,140,30,.9))}'
     + '.ef-bat svg{display:block;width:100%;height:auto}'
-    + '.ef-anim .ef-bat .ef-wing{transform-origin:50% 40%;animation:ef-flap var(--ef-f,0.5s) ease-in-out infinite alternate}'
-    + '.ef-anim .ef-bat{animation:ef-drift var(--ef-d,6s) ease-in-out infinite alternate}'
-    + '.ef-anim .ef-spider{animation:ef-spider 5s ease-in-out infinite}'
-    + '@keyframes ef-flap{from{transform:scaleY(1)}to{transform:scaleY(.45)}}'
-    + '@keyframes ef-drift{from{transform:translate(0,0) scaleX(var(--ef-x,1))}to{transform:translate(var(--ef-dx,14px),var(--ef-dy,-4px)) scaleX(var(--ef-x,1))}}'
-    + '@keyframes ef-spider{0%,100%{transform:translateY(0)}50%{transform:translateY(10px)}}'
+    + '[data-ef-off] .ef-deco,[data-ef-off] .ef-bats,[data-ef-off] .ef-mini,[data-ef-off] .ef-logoweb,[data-ef-off] .ef-footer,[data-ef-off] .ef-snow{display:none!important}'
     + '.ef-snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}'
     + '.ef-flake{position:absolute;top:-10px;color:#fff;opacity:.8;animation:ef-fall linear infinite}'
     + '[data-theme="light"] .ef-flake{color:#9fb7cf}'
@@ -175,71 +212,121 @@
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
 
-  function batsInto(container, count, sizeRange) {
+  // Bats in a box, standing still. avoidLeftPx keeps them off the app name.
+  function batsInto(container, count, sizeRange, avoidLeftPx) {
     var layer = document.createElement('div');
     layer.className = 'ef-bats';
     layer.setAttribute('aria-hidden', 'true');
+    var width = container.clientWidth || window.innerWidth;
+    var minLeft = Math.min(85, ((avoidLeftPx || 0) / width) * 100 + 2);
     for (var i = 0; i < count; i++) {
       var b = document.createElement('div');
       b.className = 'ef-bat';
-      var w = rnd(sizeRange[0], sizeRange[1]);
-      b.style.width = w + 'px';
-      b.style.left = rnd(4, 92) + '%';
-      b.style.top = rnd(8, 62) + '%';
-      b.style.setProperty('--ef-x', Math.random() < 0.5 ? '-1' : '1');
-      b.style.setProperty('--ef-f', rnd(0.35, 0.7).toFixed(2) + 's');
-      b.style.setProperty('--ef-d', rnd(4, 9).toFixed(1) + 's');
-      b.style.setProperty('--ef-dx', rnd(-24, 24).toFixed(0) + 'px');
-      b.style.setProperty('--ef-dy', rnd(-8, 8).toFixed(0) + 'px');
+      b.style.width = rnd(sizeRange[0], sizeRange[1]).toFixed(0) + 'px';
+      b.style.left = rnd(minLeft, 92).toFixed(1) + '%';
+      b.style.top = rnd(10, 55).toFixed(0) + '%';
+      b.style.transform = 'rotate(' + rnd(-14, 14).toFixed(0) + 'deg)' + (Math.random() < 0.5 ? ' scaleX(-1)' : '');
       b.innerHTML = BAT;
       layer.appendChild(b);
     }
     container.appendChild(layer);
   }
 
-  // Small cobwebs tucked into the corners of page elements (Ben, 2026-10-28):
-  // always the app's logo/title and the end of its tab bar, plus a few random
-  // cards/panels; anything marked data-einbau-web="tl|tr|bl|br" always gets one.
-  // Re-checked as screens change, so new views get webs too.
-  function miniWeb(el, corner, size) {
+  // Small cobwebs tucked into the corners of page elements: the end of each tab
+  // bar plus a few random cards/panels; anything marked data-einbau-web="tl|tr|bl|br"
+  // always gets one. Re-checked as screens change, so new views get webs too.
+  function miniWeb(el, corner, size, seed) {
     if (!el || el.querySelector(':scope > .ef-mini')) return;
     if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
     var d = document.createElement('span');
     d.className = 'ef-mini ' + corner;
     d.setAttribute('aria-hidden', 'true');
-    d.style.setProperty('--ef-s', size + 'px');
-    d.innerHTML = web(size);
+    d.innerHTML = web(size, size, seed || Math.floor(Math.random() * 1e6), false);
     el.appendChild(d);
   }
+
+  // The logo/app-name web: strung from the name's right edge out toward the
+  // middle of the screen and down to the header's bottom border, never over
+  // the name itself.
+  var LOGO_SEL = '[data-einbau-logo], .header-badge, header h1, .header h1, .logo, .brand';
+  function logoWeb(header) {
+    if (!header || header.querySelector(':scope > .ef-logoweb')) return;
+    var logo = header.querySelector(LOGO_SEL);
+    if (!logo) return;
+    var hr = header.getBoundingClientRect(), lr = logo.getBoundingClientRect();
+    var top = Math.max(0, lr.top - hr.top), left = lr.right - hr.left + 4;
+    var h = Math.max(24, hr.height - top), w = Math.min(Math.round(h * 1.9), Math.max(40, hr.width / 2 - left));
+    var d = document.createElement('span');
+    d.className = 'ef-logoweb';
+    d.setAttribute('aria-hidden', 'true');
+    d.style.top = top.toFixed(0) + 'px';
+    d.style.left = left.toFixed(0) + 'px';
+    d.innerHTML = web(Math.round(w), Math.round(h), yearSeed() + 101, false);
+    header.appendChild(d);
+  }
+
   var CORNERS = ['tl', 'tr', 'bl', 'br'];
   function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+
+  // "An Einbau Product" → "A Spooky / Festive Einbau Product".
+  function retag() {
+    var to = season() === 'christmas' ? 'A Festive Einbau Product' : 'A Spooky Einbau Product';
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    var node;
+    while ((node = walker.nextNode())) {
+      if (/^\s*an einbau product\s*$/i.test(node.nodeValue)) node.nodeValue = node.nodeValue.replace(/an einbau product/i, to);
+    }
+  }
+
+  var headerEl = null, headerSel = null;
+  // Header bats + the logo web, and the top window webs moved under the
+  // header. Retried until the header exists (apps often render it after sign-in).
+  function setupHeader() {
+    if (headerEl && document.body.contains(headerEl)) return;
+    headerEl = document.querySelector(headerSel || '[data-einbau-header], header, .header, .app-header');
+    if (!headerEl) return;
+    if (getComputedStyle(headerEl).position === 'static') headerEl.style.position = 'relative';
+    headerEl.style.isolation = 'isolate'; // behind the header's text and buttons
+    var hb = Math.max(0, headerEl.getBoundingClientRect().bottom).toFixed(0) + 'px';
+    document.querySelectorAll('.ef-web.tl, .ef-web.tr').forEach(function (w) { w.style.top = hb; });
+    var logo = headerEl.querySelector(LOGO_SEL);
+    var avoid = logo ? logo.getBoundingClientRect().right - headerEl.getBoundingClientRect().left + 140 : 0;
+    batsInto(headerEl, Math.round(rnd(3, 6)), [28, 50], avoid);
+  }
+
   function sprinkle() {
-    document.querySelectorAll('[data-einbau-web]').forEach(function (el) {
+    retag();
+    if (season() !== 'halloween') return;
+    setupHeader();
+    document.querySelectorAll('[data-einbau-web]').forEach(function (el, i) {
       var c = el.getAttribute('data-einbau-web');
-      miniWeb(el, CORNERS.indexOf(c) >= 0 ? c : 'tr', Math.round(rnd(22, 34)));
+      miniWeb(el, CORNERS.indexOf(c) >= 0 ? c : 'tr', Math.round(rnd(18, 27)), yearSeed() + 200 + i);
     });
-    var logo = document.querySelector('[data-einbau-logo], .header-badge, .app-switcher, header h1, .header h1, .logo, .brand');
-    miniWeb(logo, 'tr', Math.round(rnd(30, 42)));
-    document.querySelectorAll('.tabs, [role="tablist"], .tab-bar, nav.tabs').forEach(function (bar) {
+    if (headerEl) logoWeb(headerEl);
+    document.querySelectorAll('.tabs, [role="tablist"], .tab-bar, nav.tabs').forEach(function (bar, i) {
       var last = bar.lastElementChild;
       while (last && last.classList && last.classList.contains('ef-mini')) last = last.previousElementSibling;
-      miniWeb(last, 'tr', Math.round(rnd(24, 34)));
+      miniWeb(last, 'tr', 24, yearSeed() + 300 + i);
     });
     var cards = Array.prototype.slice.call(document.querySelectorAll('.card, .panel, [data-einbau-card]'))
       .filter(function (c) { return !c.querySelector(':scope > .ef-mini') && c.offsetWidth > 120; });
     var already = document.querySelectorAll('.card > .ef-mini, .panel > .ef-mini, [data-einbau-card] > .ef-mini').length;
     for (var i = already; i < 3 && cards.length; i++) {
       var c = cards.splice(Math.floor(Math.random() * cards.length), 1)[0];
-      miniWeb(c, pick(CORNERS), Math.round(rnd(26, 40)));
+      miniWeb(c, pick(CORNERS), Math.round(rnd(21, 32)));
     }
+  }
+  function keepFooterLast() {
+    var foot = document.querySelector('body > .ef-footer');
+    if (foot && foot !== document.body.lastElementChild) document.body.appendChild(foot);
   }
   function watchForNewScreens() {
     if (!window.MutationObserver) return;
     var t = null;
     new MutationObserver(function () {
       if (t) return;
-      t = setTimeout(function () { t = null; sprinkle(); }, 400);
-    }).observe(document.body, { childList: true, subtree: true });
+      t = setTimeout(function () { t = null; sprinkle(); keepFooterLast(); }, 400);
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
   }
 
   var initialised = false;
@@ -253,37 +340,31 @@
     var go = function () {
       if (s === 'halloween') {
         var bottomZ = opts && typeof opts.bottomZ === 'number' ? String(opts.bottomZ) : null;
-        ['tl', 'tr', 'bl', 'br'].forEach(function (c) {
-          var size = Math.round(rnd(110, 180));
+        headerSel = opts && opts.header;
+        // Window corners: the same four webs on every page and app (seeded per
+        // corner), each a little different; top ones start under the header so
+        // they never cover the app name; no spiders at the bottom.
+        CORNERS.forEach(function (c, i) {
+          var top = c === 'tl' || c === 'tr';
+          if (top && opts && opts.topWebs === false) return;
+          var R = seeded(yearSeed() + i * 17);
+          var size = Math.round(88 + R() * 56); // 20% smaller than before
           var d = document.createElement('div');
           d.className = 'ef-deco ef-web ' + c;
-          d.style.setProperty('--ef-s', size + 'px');
-          if (bottomZ && (c === 'bl' || c === 'br')) d.style.zIndex = bottomZ;
+          if (top) d.style.top = '0px'; // moved under the header once it exists
+          if (bottomZ && !top) d.style.zIndex = bottomZ;
           d.setAttribute('aria-hidden', 'true');
-          d.innerHTML = web(size);
+          d.innerHTML = web(size, size, yearSeed() + i * 17 + 5, top);
           document.body.appendChild(d);
         });
-        // Bats in the app's header (first match), else a band across the top;
-        // and a band along the bottom (the "footer").
-        var sel = (opts && opts.header) || '[data-einbau-header], header, .header, .app-header';
-        var header = document.querySelector(sel);
-        if (header) {
-          if (getComputedStyle(header).position === 'static') header.style.position = 'relative';
-          header.style.isolation = 'isolate'; // bats fly behind the header's text and buttons
-          batsInto(header, Math.round(rnd(4, 7)), [26, 52]);
-        } else {
-          var top = document.createElement('div');
-          top.className = 'ef-band';
-          top.style.top = '0';
-          document.body.appendChild(top);
-          batsInto(top, Math.round(rnd(4, 7)), [26, 48]);
-        }
+        // Footer bats live at the very bottom of the page (scroll to find them),
+        // never over the form.
         if (!opts || opts.bottom !== false) {
-          var bottom = document.createElement('div');
-          bottom.className = 'ef-band bottom';
-          if (bottomZ) bottom.style.zIndex = bottomZ;
-          document.body.appendChild(bottom);
-          batsInto(bottom, Math.round(rnd(3, 5)), [22, 40]);
+          var foot = document.createElement('div');
+          foot.className = 'ef-footer';
+          foot.setAttribute('aria-hidden', 'true');
+          document.body.appendChild(foot);
+          batsInto(foot, Math.round(rnd(3, 5)), [26, 44], 0);
         }
         sprinkle();
         watchForNewScreens();
@@ -304,6 +385,8 @@
           snow.appendChild(f);
         }
         document.body.appendChild(snow);
+        sprinkle();
+        watchForNewScreens();
       }
     };
     if (document.body) go(); else document.addEventListener('DOMContentLoaded', go);
@@ -335,13 +418,16 @@
   }
 
   window.EinbauFestive = {
-    version: '2026-10-28b',
+    version: '2026-10-28c',
     season: season,
     init: init,
     loader: loader,
     phrase: phrase,
     creatureSvg: function () { return creature(season()); },
     // Put a small cobweb in a corner of one element yourself (Halloween only).
-    web: function (el, corner) { if (season() === 'halloween') { injectCss(); miniWeb(el, corner || 'tr', 30); } },
+    web: function (el, corner) { if (season() === 'halloween') { injectCss(); miniWeb(el, corner || 'tr', 24); } },
+    // Drop / bring back every decoration (e.g. hide on sub-screens to cut clutter).
+    hide: function () { document.documentElement.setAttribute('data-ef-off', ''); },
+    show: function () { document.documentElement.removeAttribute('data-ef-off'); },
   };
 })();
