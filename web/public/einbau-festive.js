@@ -9,6 +9,7 @@
  *                            z-index, e.g. under a fixed bottom action bar
  *   const l = EinbauFestive.loader(el, { size })  // anything loading → l.done() / l.stalled() / l.remove()
  *   EinbauFestive.phrase()                        // a loading line for the season, if you need text only
+ *   EinbauFestive.phrase({ short: true })         // one word, for tiny buttons ("Boo…", "Wrapping…")
  *
  * Seasons switch on by date: Halloween Oct 15 – Nov 1, Christmas Dec 1 – Dec 26.
  * Preview / override on one browser: ?festive=halloween|christmas|off in the URL
@@ -51,8 +52,14 @@
     halloween: ['Summoning your data…', 'Raising the invoices from the dead…', 'Stitching the records together…', 'Consulting the spirits of Procore…', "It's alive! Almost…", 'Rattling the NetSuite bones…', 'Brewing the numbers in the cauldron…', 'Carving up the line items…', 'Waking the ghosts in the machine…', 'Something wicked this way loads…'],
     christmas: ['Checking the list twice…', 'Wrapping up your data…', 'Loading the sleigh…', 'The elves are on it…', 'Dashing through the records…', 'Warming up by the fire…', 'Untangling the lights…', 'Feeding the reindeer…'],
   };
-  function phrase() {
-    var list = PHRASES[season() || 'normal'];
+  // One-word lines for tiny buttons ("SAVE", "▶ RUN") where a long line won't fit.
+  var SHORT = {
+    normal: ['Working…', 'Saving…', 'On it…', 'Busy…'],
+    halloween: ['Boo…', 'Brewing…', 'Haunting…', 'Summoning…', 'Stitching…', 'Spooking…'],
+    christmas: ['Wrapping…', 'Ho ho ho…', 'Sleighing…', 'Jingling…', 'Elving…'],
+  };
+  function phrase(opts) {
+    var list = ((opts && opts.short) ? SHORT : PHRASES)[season() || 'normal'];
     return list[Math.floor(Math.random() * list.length)];
   }
 
