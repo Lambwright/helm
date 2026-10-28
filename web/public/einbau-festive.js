@@ -110,6 +110,10 @@
     + '[data-theme="light"] .ef-deco{color:#555;opacity:.5}'
     + '.ef-web{width:var(--ef-s);height:var(--ef-s)}'
     + '.ef-web.tl{top:0;left:0}.ef-web.tr{top:0;right:0;transform:scaleX(-1)}.ef-web.bl{bottom:0;left:0;transform:scaleY(-1)}.ef-web.br{bottom:0;right:0;transform:scale(-1,-1)}'
+    + '.ef-mini{position:absolute;pointer-events:none;z-index:5;width:var(--ef-s);height:var(--ef-s);color:#d8d8d8;opacity:.55;line-height:0}'
+    + '[data-theme="light"] .ef-mini{color:#555;opacity:.55}'
+    + '.ef-mini.tl{top:-3px;left:-3px}.ef-mini.tr{top:-3px;right:-3px;transform:scaleX(-1)}.ef-mini.bl{bottom:-3px;left:-3px;transform:scaleY(-1)}.ef-mini.br{bottom:-3px;right:-3px;transform:scale(-1,-1)}'
+    + '.ef-mini .ef-spider{display:none}'
     + '.ef-bats{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:-1}'
     + '.ef-band .ef-bats{z-index:0}'
     + '.ef-band{position:fixed;left:0;right:0;height:56px;pointer-events:none;z-index:240}.ef-band.bottom{bottom:0}'
@@ -176,6 +180,51 @@
     container.appendChild(layer);
   }
 
+  // Small cobwebs tucked into the corners of page elements (Ben, 2026-10-28):
+  // always the app's logo/title and the end of its tab bar, plus a few random
+  // cards/panels; anything marked data-einbau-web="tl|tr|bl|br" always gets one.
+  // Re-checked as screens change, so new views get webs too.
+  function miniWeb(el, corner, size) {
+    if (!el || el.querySelector(':scope > .ef-mini')) return;
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    var d = document.createElement('span');
+    d.className = 'ef-mini ' + corner;
+    d.setAttribute('aria-hidden', 'true');
+    d.style.setProperty('--ef-s', size + 'px');
+    d.innerHTML = web(size);
+    el.appendChild(d);
+  }
+  var CORNERS = ['tl', 'tr', 'bl', 'br'];
+  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+  function sprinkle() {
+    document.querySelectorAll('[data-einbau-web]').forEach(function (el) {
+      var c = el.getAttribute('data-einbau-web');
+      miniWeb(el, CORNERS.indexOf(c) >= 0 ? c : 'tr', Math.round(rnd(22, 34)));
+    });
+    var logo = document.querySelector('[data-einbau-logo], .header-badge, .app-switcher, header h1, .header h1, .logo, .brand');
+    miniWeb(logo, 'tr', Math.round(rnd(30, 42)));
+    document.querySelectorAll('.tabs, [role="tablist"], .tab-bar, nav.tabs').forEach(function (bar) {
+      var last = bar.lastElementChild;
+      while (last && last.classList && last.classList.contains('ef-mini')) last = last.previousElementSibling;
+      miniWeb(last, 'tr', Math.round(rnd(24, 34)));
+    });
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.card, .panel, [data-einbau-card]'))
+      .filter(function (c) { return !c.querySelector(':scope > .ef-mini') && c.offsetWidth > 120; });
+    var already = document.querySelectorAll('.card > .ef-mini, .panel > .ef-mini, [data-einbau-card] > .ef-mini').length;
+    for (var i = already; i < 3 && cards.length; i++) {
+      var c = cards.splice(Math.floor(Math.random() * cards.length), 1)[0];
+      miniWeb(c, pick(CORNERS), Math.round(rnd(26, 40)));
+    }
+  }
+  function watchForNewScreens() {
+    if (!window.MutationObserver) return;
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; sprinkle(); }, 400);
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   var initialised = false;
   function init(opts) {
     if (initialised) return;
@@ -214,6 +263,8 @@
         bottom.className = 'ef-band bottom';
         document.body.appendChild(bottom);
         batsInto(bottom, Math.round(rnd(3, 5)), [22, 40]);
+        sprinkle();
+        watchForNewScreens();
       } else if (s === 'christmas') {
         var snow = document.createElement('div');
         snow.className = 'ef-snow';
@@ -262,11 +313,13 @@
   }
 
   window.EinbauFestive = {
-    version: '2026-10-28',
+    version: '2026-10-28b',
     season: season,
     init: init,
     loader: loader,
     phrase: phrase,
     creatureSvg: function () { return creature(season()); },
+    // Put a small cobweb in a corner of one element yourself (Halloween only).
+    web: function (el, corner) { if (season() === 'halloween') { injectCss(); miniWeb(el, corner || 'tr', 30); } },
   };
 })();
