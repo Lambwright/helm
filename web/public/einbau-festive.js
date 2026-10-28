@@ -22,6 +22,12 @@
       var q = new URLSearchParams(location.search).get('festive');
       if (q === 'auto') localStorage.removeItem(KEY);
       else if (q) localStorage.setItem(KEY, q);
+      if (q && history.replaceState) {
+        // Remembered now — take it back out of the address bar.
+        var u = new URL(location.href);
+        u.searchParams.delete('festive');
+        history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+      }
       var forced = localStorage.getItem(KEY);
       if (forced === 'off') return null;
       if (forced === 'halloween' || forced === 'christmas') return forced;
