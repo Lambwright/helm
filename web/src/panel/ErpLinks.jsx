@@ -2,20 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Loading from "../components/Loading.jsx";
 import { changeErpLinks, getErpLinks } from "./panelApi.js";
 import { erpTypeForView } from "./procoreContext.js";
+import { ERP_TYPES, ID_RE, plural } from "./erpShared.js";
 import { money } from "./format.js";
-
-export const ERP_TYPES = [
-  { id: "direct_cost", label: "Direct Costs" },
-  { id: "change_order", label: "Prime Change Orders" },
-  { id: "prime_contract", label: "Prime Contracts" },
-  { id: "owner_invoice", label: "Owner Invoices" },
-  { id: "work_order", label: "Subcontracts" },
-  { id: "purchase_order", label: "Purchase Orders" },
-  { id: "sub_invoice", label: "Subcontractor Invoices" },
-];
+import ErpRecord from "./ErpRecord.jsx";
 
 const CHUNK = 5; // the worker takes 5 per request, to stay under its subrequest ceiling
-const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_\-+.:#/ ]{0,99}$/;
 
 // What's wrong with each ID typed for a record being locked. Two records pointing at one
 // NetSuite transaction is the mismatch this tool exists to fix, so a repeat is blocked.
@@ -34,9 +25,41 @@ function findIdProblems(lockRows, rows, ids) {
   return problems;
 }
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
+// On a record, this is that record's settings. The checkbox list is for list pages,
+// for changing several at once, and for a page whose record can't be matched.
 export default function ErpLinks({ projectId, view, openRecordId, onSignedOut }) {
+  const [showAll, setShowAll] = useState(!openRecordId);
+  const [unmatched, setUnmatched] = useState(false);
+  const showList = useCallback(() => setShowAll(true), []);
+  const noMatch = useCallback(() => {
+    setUnmatched(true);
+    setShowAll(true);
+  }, []);
+
+  if (!showAll) {
+    return (
+      <ErpRecord
+        projectId={projectId}
+        type={erpTypeForView(view)}
+        id={openRecordId}
+        onNotFound={noMatch}
+        onShowAll={showList}
+        onSignedOut={onSignedOut}
+      />
+    );
+  }
+  return (
+    <>
+      {unmatched && <p className="panel-msg erp-note">Couldn't match this page to one record, so here's the list.</p>}
+      {openRecordId && !unmatched && (
+        <button className="panel-link erp-back" onClick={() => setShowAll(false)}>Back to this record</button>
+      )}
+      <ErpList projectId={projectId} view={view} openRecordId={openRecordId} onSignedOut={onSignedOut} />
+    </>
+  );
+}
+
+function ErpList({ projectId, view, openRecordId, onSignedOut }) {
   const [type, setType] = useState(() => erpTypeForView(view));
   const [rows, setRows] = useState(null);
   const [truncated, setTruncated] = useState(false);

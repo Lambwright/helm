@@ -39,6 +39,11 @@ export function getErpLinks(projectId, type) {
   return request(`/erp-links?${q}`);
 }
 
+export function getErpRecord(projectId, type, id) {
+  const q = new URLSearchParams({ project_id: projectId, type, id });
+  return request(`/erp-links?${q}`);
+}
+
 export function changeErpLinks(projectId, type, reason, changes) {
   return request("/erp-links", {
     method: "POST",

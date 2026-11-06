@@ -56,6 +56,8 @@
 
 /* ERP links */
 .erp { display: flex; flex-direction: column; gap: 10px; }
+.erp .panel-link { align-self: flex-start; }
+.erp-note, .erp-back { display: block; margin-bottom: 10px; }
 .erp input:not([type="checkbox"]), .erp select { width: 100%; min-width: 0; padding: 7px 9px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input); border-radius: var(--radius-sm); font: inherit; font-size: 12px; }
 .erp input[type="checkbox"] { flex: none; margin: 2px 0 0; accent-color: var(--accent); }
 .erp-filters { display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 8px; }
