@@ -1,0 +1,83 @@
+/* The Procore side panel. Procore sets the width and it's narrow, so everything stacks.
+   Every colour is a variable from the suite's einbau-theme.js, including the surface roles
+   (--header-*, --title-color, --badge-*), so light/dark and a person's colour in HELM apply
+   here exactly as they do in HELM. Don't hardcode a colour in this file. */
+.panel-page { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg-page); }
+.panel-header { display: flex; flex-direction: column; padding: 10px 16px; background: var(--header-bg, var(--bg-header)); border-bottom: 3px solid var(--header-strip, var(--accent)); }
+.panel-header-name { font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--header-name, var(--header-text, var(--text-primary))); }
+.panel-header-sub { font-size: 9px; font-style: italic; color: var(--header-text-muted, var(--text-secondary)); }
+
+.panel { flex: 1; min-height: 0; padding: 16px; background: var(--bg-page); color: var(--text-primary); font-size: 13px; line-height: 1.45; box-sizing: border-box; }
+.panel *, .panel *::before, .panel *::after { box-sizing: border-box; }
+.panel ul { list-style: none; margin: 0; padding: 0; }
+.panel .tabs { margin-bottom: 12px; }
+.panel .tab { padding: 6px 10px; font-size: 11px; }
+
+.panel-note h1 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--title-color, var(--text-primary)); }
+.panel-note p { margin: 0 0 14px; color: var(--text-secondary); overflow-wrap: anywhere; }
+
+.panel-drop-target { display: flex; flex-direction: column; gap: 12px; min-height: 100%; border-radius: var(--radius-md); }
+.panel-drop-target.dragging { outline: 2px dashed var(--accent); outline-offset: 6px; }
+
+.panel-dc, .panel-confirm { padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+.panel-dc-label { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--title-color, var(--text-secondary)); }
+.panel-dc-number { margin: 2px 0 10px; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.panel-dc dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; margin: 0 0 10px; }
+.panel-dc dt { color: var(--text-secondary); }
+.panel-dc dd { margin: 0; overflow-wrap: anywhere; }
+.panel-cap { text-transform: capitalize; }
+
+.panel-link { padding: 0; background: none; border: 0; color: var(--text-secondary); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.panel-link:hover { color: var(--text-primary); }
+
+.panel-zone { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 22px 12px; background: transparent; border: 1px dashed var(--border-input); border-radius: var(--radius-md); color: var(--text-primary); font: inherit; text-align: center; cursor: pointer; }
+.panel-zone span { font-size: 12px; color: var(--text-secondary); }
+.panel-zone:hover:not(:disabled), .panel-drop-target.dragging .panel-zone { border-color: var(--accent); background: var(--bg-hover, transparent); }
+.panel-zone:disabled { opacity: .5; cursor: not-allowed; }
+
+.panel-files li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color); }
+.panel-file-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.panel-file-size { flex: none; font-size: 11px; color: var(--text-secondary); }
+.panel-files button { flex: none; width: 24px; height: 24px; padding: 0; background: none; border: 0; color: var(--text-secondary); font-size: 16px; line-height: 1; cursor: pointer; }
+.panel-files button:hover:not(:disabled) { color: var(--red); }
+
+.panel-wide { width: 100%; }
+.panel-confirm p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.panel-hint { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.panel-confirm .panel-hint { margin-bottom: 12px; }
+.panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.panel-msg { margin: 0; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); overflow-wrap: anywhere; }
+.panel-msg.good { color: var(--green); }
+.panel-msg.bad { color: var(--red); border-color: var(--red-border); }
+
+.panel-existing ul { margin-top: 6px; }
+.panel-existing li { padding: 3px 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-secondary); }
+
+/* ERP links */
+.erp { display: flex; flex-direction: column; gap: 10px; }
+.erp input:not([type="checkbox"]), .erp select { width: 100%; min-width: 0; padding: 7px 9px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input); border-radius: var(--radius-sm); font: inherit; font-size: 12px; }
+.erp input[type="checkbox"] { flex: none; margin: 2px 0 0; accent-color: var(--accent); }
+.erp-filters { display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 8px; }
+.erp-all { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+
+.erp-rows { display: flex; flex-direction: column; gap: 6px; }
+.erp-row { padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+.erp-row.on { border-color: var(--accent); }
+.erp-row > label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.erp-row-main { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.erp-row-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.erp-row-top strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
+.erp-row-sub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; color: var(--text-secondary); text-transform: none; }
+.erp-open { flex: none; padding: 0 5px; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--badge-text, var(--accent)); background: var(--badge-bg, transparent); border: 1px solid var(--badge-bg, var(--accent)); border-radius: 3px; }
+.erp-state { margin-top: 2px; font-size: 11px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.erp-state.linked { color: var(--text-primary); }
+.erp-id { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 0 22px; }
+.erp-problem { font-size: 11px; color: var(--red); }
+.erp-result { margin: 6px 0 0 22px; font-size: 11px; overflow-wrap: anywhere; }
+.erp-result.good { color: var(--green); }
+.erp-result.bad { color: var(--red); }
+
+.erp-bar { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+.erp-bar p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.erp-bar-count { display: flex; gap: 12px; font-size: 12px; font-weight: 600; color: var(--title-color, var(--text-primary)); }
