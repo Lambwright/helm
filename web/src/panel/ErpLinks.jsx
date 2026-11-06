@@ -6,7 +6,9 @@ import { ERP_TYPES, ID_RE, plural } from "./erpShared.js";
 import { money } from "./format.js";
 import ErpRecord from "./ErpRecord.jsx";
 
-const CHUNK = 5; // the worker takes 5 per request, to stay under its subrequest ceiling
+// The worker takes 5 per request, to stay under its subrequest ceiling. A Direct Cost's
+// lines make it a variable number of calls, so those go one at a time.
+const chunkFor = (type) => (type === "direct_cost" ? 1 : 5);
 
 // What's wrong with each ID typed for a record being locked. Two records pointing at one
 // NetSuite transaction is the mismatch this tool exists to fix, so a repeat is blocked.
@@ -157,8 +159,9 @@ function ErpList({ projectId, view, openRecordId, onSignedOut }) {
     ];
     const done = {};
     let stopped = null;
-    for (let i = 0; i < changes.length && !stopped; i += CHUNK) {
-      const batch = changes.slice(i, i + CHUNK);
+    const chunk = chunkFor(type);
+    for (let i = 0; i < changes.length && !stopped; i += chunk) {
+      const batch = changes.slice(i, i + chunk);
       try {
         const out = await changeErpLinks(projectId, type, reason.trim(), batch);
         for (const r of out.results) done[r.id] = r;
