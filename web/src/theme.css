@@ -301,3 +301,29 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .sec-key { display: inline-block; width: 9px; height: 9px; vertical-align: -1px; margin-right: 4px; }
 .sec-key-ok { background: var(--green); opacity: 0.6; }
 .sec-key-failed { background: var(--red); }
+
+/* Easter Eggs tab */
+.egg-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.egg-master { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.egg-season { background: var(--bg-page); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; }
+.egg-season-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.egg-modes { display: flex; gap: 4px; }
+.egg-dates { display: flex; align-items: center; gap: 10px; font-size: 12px; margin-bottom: 10px; }
+.egg-dates label { display: flex; align-items: center; gap: 6px; }
+.egg-dates input { width: 66px; }
+.egg-pieces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 12px; }
+.egg-pieces label, .egg-unlocks label { display: flex; align-items: center; gap: 6px; }
+.egg-unlocks { display: flex; flex-direction: column; gap: 2px; font-size: 11px; white-space: nowrap; }
+.egg-table input, .egg-table select { width: 100%; min-width: 0; }
+.egg-table input[type="checkbox"] { width: auto; }
+.egg-table .egg-icon { width: 44px; text-align: center; }
+.egg-table .egg-num { width: 84px; }
+.egg-save { display: flex; gap: 8px; margin-bottom: 16px; }
+.egg-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.egg-chip { font-size: 11px; padding: 3px 8px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-page); color: var(--text-primary); white-space: nowrap; }
+button.egg-chip { cursor: pointer; }
+.egg-chip.level-bronze { border-color: #b0793f; }
+.egg-chip.level-silver { border-color: #a9b4bf; }
+.egg-chip.level-gold { border-color: #d9b23c; }
+.egg-chip.level-platinum { border-color: #8fd3e0; }
+.egg-give { width: auto; font-size: 11px; padding: 3px 6px; }

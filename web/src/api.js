@@ -34,6 +34,8 @@ const ADMIN_ERROR_MESSAGES = {
   invalid_netsuite_employee: "That NetSuite employee isn't in the list any more — refresh the lists.",
   invalid_timezone: "That isn't a time zone this system recognises.",
   invalid_department: "That department isn't in Procore's list any more — refresh the list.",
+  invalid_eggs: "Something there isn't valid. Dates are month-day, like 12-01, and every award needs a name and a whole-number threshold.",
+  invalid_award: "That award has been removed. Save your changes and try again.",
   procore_unavailable: "Couldn't reach Procore. Try again in a minute.",
   procore_empty: "Procore returned no departments, so the list was left as it was.",
 };
@@ -90,6 +92,11 @@ export const api = {
   setLink: (username, type, id) => request("/auth/fields/set", { username, field: type, value: id }),
   rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }
   listAudit: (limit) => request("/auth/admin/list-audit", limit ? { limit } : {}), // { entries: [{actor, action, target, at, ip}] }
+
+  // Easter Eggs tab (Super Admin only).
+  getEggs: () => request("/auth/eggs/get"), // { config, people }
+  setEggs: (config) => request("/auth/eggs/set", config),
+  giveAward: (usernames, awardId, give) => request("/auth/eggs/award", { usernames, awardId, give }),
 
   // Self-service — acts on the caller only.
   updateProfile: async (fields) => {

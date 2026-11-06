@@ -192,7 +192,7 @@ function themeableApps(user) {
 // Secret colours (hidden presets) show for the Super Admin for now; everyone
 // else will unlock them through achievements later.
 function visiblePresets(user) {
-  return ACCENT_PRESETS.filter((p) => !p.hidden || user.jobRole === "superadmin");
+  return ACCENT_PRESETS.filter((p) => !p.hidden || user.jobRole === "superadmin" || user.unlockedPresets?.includes(p.id));
 }
 
 function AppearanceRow({ appId, label, current, presets, onUserUpdated, onToast }) {
@@ -359,9 +359,25 @@ function SessionsSection({ user, onToast }) {
   );
 }
 
+function AwardsSection({ user }) {
+  return (
+    <div className="egg-chips">
+      {user.awards.map((a) => (
+        <span key={a.id} className={`egg-chip level-${a.level}`}>{a.icon} {a.name}</span>
+      ))}
+    </div>
+  );
+}
+
 export default function MyAccount({ user, onUserUpdated, onToast }) {
   return (
     <>
+      {user.awards?.length > 0 && (
+        <div className="card">
+          <div className="card-title">My awards</div>
+          <AwardsSection user={user} />
+        </div>
+      )}
       <div className="card">
         <div className="card-title">Profile</div>
         <ProfileSection user={user} onUserUpdated={onUserUpdated} onToast={onToast} />

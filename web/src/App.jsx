@@ -11,6 +11,7 @@ import MatrixEditor from "./components/MatrixEditor.jsx";
 import Departments from "./components/Departments.jsx";
 import ToolPermissions from "./components/ToolPermissions.jsx";
 import Security from "./components/Security.jsx";
+import EasterEggs from "./components/EasterEggs.jsx";
 import Toast from "./components/Toast.jsx";
 import Loading from "./components/Loading.jsx";
 import { SUPER_ADMIN } from "./apps.js";
@@ -24,6 +25,7 @@ const ADMIN_TABS = [
   { key: "matrix", label: "Role Matrix" },
   { key: "security", label: "Security" },
   { key: "audit", label: "Audit Log" },
+  { key: "eggs", label: "Easter Eggs" },
   { key: "account", label: "My Account" },
 ];
 const USER_TABS = [{ key: "account", label: "My Account" }];
@@ -226,6 +228,7 @@ export default function App() {
         {tab === "audit" && isAdmin && (
           <AuditLog entries={auditEntries} loading={loadingAudit} error={auditError} onRefresh={loadAudit} />
         )}
+        {tab === "eggs" && isAdmin && <EasterEggs onToast={showToast} onUnauthorized={handleLogout} />}
         {tab === "account" && (
           <MyAccount user={user} onUserUpdated={handleUserUpdated} onToast={showToast} />
         )}

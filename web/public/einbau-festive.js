@@ -17,6 +17,9 @@
  *   EinbauFestive.phrase({ short: true })         // one word, for tiny buttons ("Boo…", "Wrapping…")
  *
  * Seasons switch on by date: Halloween Oct 15 – Nov 1, Christmas Dec 1 – Dec 26.
+ * The Super Admin can change those dates, force a season on or off, and switch
+ * individual pieces off in HELM's Easter Eggs tab (read from auth-worker's public
+ * /auth/festive; if that can't be reached, the last copy or these defaults apply).
  * Preview / override on one browser: ?festive=halloween|christmas|off in the URL
  * (remembered on that browser; ?festive=auto goes back to the calendar). Decorations never take clicks
  * (pointer-events: none), sit behind dialogs, and hold still for anyone whose
@@ -26,6 +29,37 @@
   'use strict';
 
   var KEY = 'einbau_festive';
+  var CFG_KEY = 'einbau_festive_cfg';
+  var CFG_URL = 'https://auth.ben-a90.workers.dev/auth/festive';
+
+  // Used until HELM's settings have been read, and if they can't be.
+  var cfg = {
+    master: true,
+    seasons: {
+      halloween: { mode: 'date', start: '10-15', end: '11-01', pieces: {} },
+      christmas: { mode: 'date', start: '12-01', end: '12-26', pieces: {} },
+    },
+  };
+  function useCfg(c) { if (c && c.seasons && c.seasons.halloween && c.seasons.christmas) cfg = c; }
+  try { useCfg(JSON.parse(localStorage.getItem(CFG_KEY))); } catch (e) { /* private mode etc. */ }
+
+  function loadCfg(done) {
+    var finished = false;
+    var finish = function () { if (!finished) { finished = true; done(); } };
+    setTimeout(finish, 1500); // never hold the page up for this
+    if (!window.fetch) return finish();
+    fetch(CFG_URL).then(function (r) { return r.ok ? r.json() : null; }).then(function (c) {
+      useCfg(c);
+      try { if (c && c.seasons) localStorage.setItem(CFG_KEY, JSON.stringify(c)); } catch (e) {}
+      finish();
+    }).catch(finish);
+  }
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function inDates(c) {
+    var d = new Date(), md = pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    return c.start <= c.end ? (md >= c.start && md <= c.end) : (md >= c.start || md <= c.end);
+  }
 
   function season() {
     try {
@@ -42,10 +76,20 @@
       if (forced === 'off') return null;
       if (forced === 'halloween' || forced === 'christmas') return forced;
     } catch (e) { /* private mode etc. */ }
-    var d = new Date(), m = d.getMonth() + 1, day = d.getDate();
-    if ((m === 10 && day >= 15) || (m === 11 && day <= 1)) return 'halloween';
-    if (m === 12 && day <= 26) return 'christmas';
+    if (!cfg.master) return null;
+    var names = ['halloween', 'christmas'];
+    for (var i = 0; i < names.length; i++) if (cfg.seasons[names[i]].mode === 'on') return names[i];
+    for (var j = 0; j < names.length; j++) {
+      var c = cfg.seasons[names[j]];
+      if (c.mode === 'date' && inDates(c)) return names[j];
+    }
     return null;
+  }
+
+  // Is this piece of the current season switched on? (Everything is, by default.)
+  function piece(name) {
+    var c = cfg.seasons[season()];
+    return !c || !c.pieces || c.pieces[name] !== false;
   }
 
   var reduced = false;
@@ -55,16 +99,16 @@
   var PHRASES = {
     normal: ['Working on it…', 'Crunching the numbers…', 'Fetching the good stuff…', 'Reading the fine print…', 'Lining things up…', 'Almost there…'],
     halloween: ['Summoning your data…', 'Raising the invoices from the dead…', 'Stitching the records together…', 'Consulting the spirits of Procore…', "It's alive! Almost…", 'Rattling the NetSuite bones…', 'Brewing the numbers in the cauldron…', 'Carving up the line items…', 'Waking the ghosts in the machine…', 'Something wicked this way loads…'],
-    christmas: ['Checking the list twice…', 'Wrapping up your data…', 'Loading the sleigh…', 'The elves are on it…', 'Dashing through the records…', 'Warming up by the fire…', 'Untangling the lights…', 'Feeding the reindeer…'],
+    christmas: ['Decking the halls…', 'Jingling the bells…', 'Hanging the mistletoe…', 'Baking the pie…', 'Spiking the eggnog…', 'Dashing through the snow…', 'Checking the list twice…', 'Wrapping up your data…', 'Loading the sleigh…', 'The elves are on it…', 'Roasting the chestnuts…', 'Untangling the lights…', 'Feeding the reindeer…', 'Stuffing the stockings…', 'Trimming the tree…', 'Warming up by the fire…'],
   };
   // One-word lines for tiny buttons ("SAVE", "▶ RUN") where a long line won't fit.
   var SHORT = {
     normal: ['Working…', 'Saving…', 'On it…', 'Busy…'],
     halloween: ['Boo…', 'Brewing…', 'Haunting…', 'Summoning…', 'Stitching…', 'Spooking…'],
-    christmas: ['Wrapping…', 'Ho ho ho…', 'Sleighing…', 'Jingling…', 'Elving…'],
+    christmas: ['Wrapping…', 'Ho ho ho…', 'Sleighing…', 'Jingling…', 'Elving…', 'Decking…', 'Baking…'],
   };
   function phrase(opts) {
-    var list = ((opts && opts.short) ? SHORT : PHRASES)[season() || 'normal'];
+    var list = ((opts && opts.short) ? SHORT : PHRASES)[(piece('phrases') && season()) || 'normal'];
     return list[Math.floor(Math.random() * list.length)];
   }
 
@@ -142,7 +186,10 @@
         + '<path d="M188 46l-16 0M188 46l0 16M188 46l-12 12M188 51q-5 0-5-5M188 57q-10 0-10-11" stroke="#E8E6E0" stroke-width="0.8" fill="none" opacity="0.9"/>';
       screen = '#9BE36A';
     } else if (costume === 'christmas') {
-      extra = '<path d="M30 64 L52 36 L74 64 Z" fill="#C8102E"/><rect x="28" y="60" width="48" height="7" rx="3.5" fill="#F4F4F4"/><circle cx="52" cy="35" r="5" fill="#F4F4F4"/>'; // santa hat
+      extra = '<path d="M33 62 C34 42 46 30 60 31 C72 32 82 42 88 57 L80 60 C77 52 74 48 71 47 C72 52 72 57 71 62 Z" fill="#C8102E"/>'
+        + '<path d="M60 31 C72 32 82 42 88 57 L84 58 C79 45 71 37 60 31 Z" fill="#A50D26"/>'
+        + '<rect x="29" y="58" width="46" height="9" rx="4.5" fill="#F4F4F4"/>'
+        + '<circle cx="86" cy="62" r="6" fill="#F4F4F4"/>'; // santa hat
       monitorExtra = '<path d="M114 44 q8 -6 16 0 q8 6 16 0 q8 -6 16 0 q8 6 16 0" stroke="#2E8B57" stroke-width="3" fill="none"/><circle cx="122" cy="44" r="2" fill="#E74C3C"/><circle cx="138" cy="44" r="2" fill="#F1C40F"/><circle cx="154" cy="44" r="2" fill="#3498DB"/><circle cx="170" cy="44" r="2" fill="#E74C3C"/>';
     }
     return '<svg class="ef-cc" viewBox="0 0 200 124" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Working on it">'
@@ -179,11 +226,21 @@
     + '.ef-bat{position:absolute;color:#0b0b0d;opacity:.95}'
     + '[data-theme="dark"] .ef-bat{filter:drop-shadow(0 0 3px rgba(255,140,30,.7)) drop-shadow(0 0 1px rgba(255,140,30,.9))}'
     + '.ef-bat svg{display:block;width:100%;height:auto}'
-    + '[data-ef-off] .ef-deco,[data-ef-off] .ef-bats,[data-ef-off] .ef-mini,[data-ef-off] .ef-logoweb,[data-ef-off] .ef-footer,[data-ef-off] .ef-snow{display:none!important}'
-    + '.ef-snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}'
-    + '.ef-flake{position:absolute;top:-10px;color:#fff;opacity:.8;animation:ef-fall linear infinite}'
-    + '[data-theme="light"] .ef-flake{color:#9fb7cf}'
-    + '@keyframes ef-fall{to{transform:translate(var(--ef-dx,20px),105vh)}}'
+    + '[data-ef-off] .ef-deco,[data-ef-off] .ef-bats,[data-ef-off] .ef-mini,[data-ef-off] .ef-logoweb,[data-ef-off] .ef-footer,[data-ef-off] .ef-band,[data-ef-off] .ef-lights,[data-ef-off] .ef-hsnow,[data-ef-off] .ef-drift{display:none!important}'
+    // Christmas. Lights and snow sit behind the header's text and buttons.
+    + '.ef-band{position:fixed;top:0;left:0;right:0;height:72px;pointer-events:none;z-index:250}'
+    + '.ef-lights{position:absolute;top:0;left:0;pointer-events:none;z-index:-1;display:block;overflow:hidden}'
+    + '.ef-wire{fill:none;stroke:#4d7a58;stroke-width:1.2}[data-theme="light"] .ef-wire{stroke:#2f5a3a}'
+    + '.ef-ice{fill:#e4f3fb;opacity:.85}[data-theme="light"] .ef-ice{fill:#a8cde3;opacity:1}'
+    + '.ef-anim .ef-bulb{animation:ef-twinkle 3s ease-in-out infinite}'
+    + '@keyframes ef-twinkle{0%,100%{opacity:1}50%{opacity:.55}}'
+    + '.ef-hsnow{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1}'
+    + '.ef-dot{position:absolute;top:-6px;border-radius:50%;background:radial-gradient(circle,#fff 0,#fff 30%,rgba(255,255,255,.55) 55%,rgba(255,255,255,0) 72%)}'
+    + '[data-theme="light"] .ef-dot{background:radial-gradient(circle,#a9c3d9 0,#a9c3d9 30%,rgba(169,195,217,.55) 55%,rgba(169,195,217,0) 72%)}'
+    + '.ef-anim .ef-dot{animation:ef-fall linear infinite}'
+    + '@keyframes ef-fall{to{transform:translate(var(--ef-dx,8px),var(--ef-h,90px))}}'
+    + '.ef-drift{position:absolute;pointer-events:none;z-index:6;line-height:0;color:#fff;filter:drop-shadow(0 -1px 1px rgba(70,100,130,.3))}'
+    + '.ef-drift svg{display:block}'
     // loader
     + '.ef-loader{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;color:var(--text-secondary,#999);font-size:12px;text-align:center}'
     + '.ef-cc{display:block;overflow:visible}.ef-cc *{transform-box:fill-box}'
@@ -230,6 +287,155 @@
       layer.appendChild(b);
     }
     container.appendChild(layer);
+  }
+
+  // Everything on the page a decoration must stay clear of: text, buttons,
+  // fields and images under root, in window coordinates.
+  function keepOut(root) {
+    var out = [], range = document.createRange(), node;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while ((node = walker.nextNode())) {
+      if (!node.nodeValue.trim()) continue;
+      range.selectNodeContents(node);
+      Array.prototype.forEach.call(range.getClientRects(), function (r) { if (r.width) out.push(r); });
+    }
+    root.querySelectorAll('button, a, input, select, textarea, img, [role="button"]').forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.width) out.push(r);
+    });
+    return out;
+  }
+
+  var BULBS = ['#ff4d4d', '#ffc531', '#3fd06b', '#4aa8ff', '#ff7ad1', '#ffe9b0'];
+
+  // A string of lights along the top of host, sagging between its hooks, with
+  // icicles hanging off the wire. Different on every load. The string sits
+  // higher wherever the header's text starts near the top, and anything that
+  // still wouldn't clear the text or a button is left out. One layout per
+  // load: redrawn after a width change, the same string just re-fits.
+  var lightSeed = Math.floor(Math.random() * 1e9);
+  function lights(host) {
+    var old = host.querySelector(':scope > .ef-lights');
+    if (old) old.parentNode.removeChild(old);
+    var W = host.clientWidth, H = host.clientHeight;
+    if (W < 120 || H < 16) return;
+    var R = seeded(lightSeed);
+    var between = function (lo, hi) { return lo + R() * (hi - lo); };
+    var hr = host.getBoundingClientRect();
+    var solid = keepOut(host.classList.contains('ef-band') ? document.body : host);
+    var room = function (x0, x1) { // free height above the first thing between x0 and x1
+      var m = H;
+      solid.forEach(function (r) {
+        if (r.right - hr.left >= x0 - 2 && r.left - hr.left <= x1 + 2 && r.bottom - hr.top > 0) m = Math.min(m, r.top - hr.top);
+      });
+      return Math.max(0, m);
+    };
+    var wire = '', art = '', ice = piece('icicles'), a = 0;
+    while (a < W + 24) { // a little spare: the header can widen when a scrollbar goes
+      var b = a + between(95, 150);
+      var sag = Math.max(1, Math.min(between(7, 11), room(a, b) - 15));
+      wire += 'M' + a.toFixed(1) + ' 2Q' + ((a + b) / 2).toFixed(1) + ' ' + (2 + 2 * sag).toFixed(1) + ' ' + b.toFixed(1) + ' 2';
+      for (var x = a + between(10, 22); x < b - 6; x += between(30, 44)) {
+        var t = (x - a) / (b - a), y = 2 + 4 * sag * t * (1 - t);
+        if (y + 13 <= room(x - 7, x + 7)) {
+          var c = BULBS[Math.floor(R() * BULBS.length)];
+          art += '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') rotate(' + between(-16, 16).toFixed(0) + ')"><g class="ef-bulb" style="animation-delay:' + (-between(0, 3)).toFixed(1) + 's">'
+            + '<circle cy="7" r="7.5" fill="' + c + '" opacity=".22"/><rect x="-1.5" width="3" height="3" fill="#2f4a36"/><ellipse cy="7" rx="3" ry="4.5" fill="' + c + '"/></g></g>';
+        }
+        if (!ice || R() < 0.3) continue;
+        for (var n = Math.ceil(between(0, 3)), ix = x + between(11, 15); n > 0; n--, ix += between(4, 6)) {
+          var iy = 2 + 4 * sag * Math.min(1, (ix - a) / (b - a)) * (1 - Math.min(1, (ix - a) / (b - a)));
+          var len = Math.min(between(6, 18), room(ix - 3, ix + 3) - iy - 3), w = between(1.4, 2.6);
+          if (len < 5) continue;
+          art += '<path class="ef-ice" d="M' + (ix - w).toFixed(1) + ' ' + iy.toFixed(1) + 'L' + (ix - w * 0.4).toFixed(1) + ' ' + (iy + len * 0.55).toFixed(1) + 'L' + ix.toFixed(1) + ' ' + (iy + len).toFixed(1) + 'L' + (ix + w * 0.3).toFixed(1) + ' ' + (iy + len * 0.6).toFixed(1) + 'L' + (ix + w).toFixed(1) + ' ' + iy.toFixed(1) + 'Z"/>';
+        }
+      }
+      a = b;
+    }
+    var h = Math.min(H, 42);
+    var d = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    d.setAttribute('class', 'ef-lights');
+    d.setAttribute('aria-hidden', 'true');
+    d.setAttribute('width', '100%'); // clipped to the header, so it can't widen the page
+    d.setAttribute('height', h);
+    d.innerHTML = '<path class="ef-wire" d="' + wire + '"/>' + art;
+    host.appendChild(d);
+  }
+
+  // Small fuzzy white dots drifting down behind the header's contents.
+  function fallingSnow(host) {
+    if (host.querySelector(':scope > .ef-hsnow')) return;
+    var layer = document.createElement('div');
+    layer.className = 'ef-hsnow';
+    layer.setAttribute('aria-hidden', 'true');
+    var H = host.clientHeight || 72;
+    layer.style.setProperty('--ef-h', (H + 12) + 'px');
+    var n = Math.max(10, Math.min(36, Math.round((host.clientWidth || 800) / 40)));
+    for (var i = 0; i < n; i++) {
+      var f = document.createElement('div'), size = rnd(2.5, 5.5);
+      f.className = 'ef-dot';
+      f.style.width = f.style.height = size.toFixed(1) + 'px';
+      f.style.left = rnd(0, 100).toFixed(1) + '%';
+      f.style.opacity = rnd(0.5, 0.95).toFixed(2);
+      f.style.setProperty('--ef-dx', rnd(-14, 14).toFixed(0) + 'px');
+      if (reduced) f.style.top = rnd(0, H).toFixed(0) + 'px'; // hold still
+      f.style.animationDuration = rnd(5, 11).toFixed(1) + 's';
+      f.style.animationDelay = (-rnd(0, 11)).toFixed(1) + 's';
+      layer.appendChild(f);
+    }
+    host.appendChild(layer);
+  }
+
+  // A lumpy little drift, w×h, thickest somewhere in the middle.
+  function driftSvg(w, h) {
+    var n = Math.max(3, Math.round(w / 13)), peak = rnd(0.3, 0.7), pts = [];
+    for (var i = 0; i <= n; i++) {
+      var t = i / n, e = Math.pow(Math.sin(Math.PI * Math.pow(t, Math.log(0.5) / Math.log(peak))), 0.7);
+      pts.push([t * w, h - h * e * (i === 0 || i === n ? 0 : rnd(0.62, 1))]);
+    }
+    var d = 'M0 ' + h;
+    for (var j = 1; j < pts.length - 1; j++) {
+      d += 'Q' + pts[j][0].toFixed(1) + ' ' + pts[j][1].toFixed(1) + ' ' + ((pts[j][0] + pts[j + 1][0]) / 2).toFixed(1) + ' ' + ((pts[j][1] + pts[j + 1][1]) / 2).toFixed(1);
+    }
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg"><path d="' + d + 'L' + w + ' ' + h + 'Z" fill="currentColor"/></svg>';
+  }
+
+  // Snow resting on the top edge of a few random buttons and surfaces. It sits
+  // above the element, so it can't cover its label, and any drift that would
+  // touch text or a button nearby is skipped. tried: looked at once per element.
+  var tried = new WeakSet();
+  function drifts(selector, cap, minWidth, widthRange, maxWidth, heightRange) {
+    var have = document.querySelectorAll('[data-ef-drift="' + cap + '"]').length;
+    if (have >= cap) return;
+    var list = Array.prototype.slice.call(document.querySelectorAll(selector)).filter(function (el) {
+      return !tried.has(el) && el.offsetWidth >= minWidth && !el.closest('.modal, .modal-backdrop, [role="dialog"], [aria-hidden="true"]');
+    });
+    if (!list.length) return;
+    var solid = keepOut(document.body);
+    while (have < cap && list.length) {
+      var el = list.splice(Math.floor(Math.random() * list.length), 1)[0];
+      tried.add(el);
+      var st = getComputedStyle(el);
+      if (st.overflow !== 'visible' || st.overflowY !== 'visible') continue; // it would be cut off
+      var r = el.getBoundingClientRect();
+      var inset = Math.max(6, parseFloat(st.borderTopLeftRadius) || 0);
+      var w = Math.round(Math.min(maxWidth, r.width * rnd(widthRange[0], widthRange[1]), r.width - inset * 2));
+      var h = Math.round(rnd(heightRange[0], heightRange[1]));
+      var left = rnd(inset, r.width - inset - w);
+      var box = { l: r.left + left, r: r.left + left + w, t: r.top - h - 1, b: r.top };
+      var hit = solid.some(function (s) { return s.left < box.r && s.right > box.l && s.top < box.b && s.bottom > box.t; });
+      if (hit) continue;
+      if (st.position === 'static') el.style.position = 'relative';
+      var d = document.createElement('span');
+      d.className = 'ef-drift';
+      d.setAttribute('data-ef-drift', cap);
+      d.setAttribute('aria-hidden', 'true');
+      d.style.left = left.toFixed(0) + 'px';
+      d.style.bottom = 'calc(100% + ' + ((parseFloat(st.borderTopWidth) || 0) - 1) + 'px)';
+      d.innerHTML = driftSvg(w, h);
+      el.appendChild(d);
+      have++;
+    }
   }
 
   // Small cobwebs tucked into the corners of page elements: the end of each tab
@@ -279,25 +485,64 @@
   }
 
   var headerEl = null, headerSel = null;
+  function findHeader() {
+    var h = document.querySelector(headerSel || '[data-einbau-header], header, .header, .app-header');
+    if (!h || !h.offsetHeight) return null;
+    if (getComputedStyle(h).position === 'static') h.style.position = 'relative';
+    h.style.isolation = 'isolate'; // decorations go behind the header's text and buttons
+    return h;
+  }
   // Header bats + the logo web, and the top window webs moved under the
   // header. Retried until the header exists (apps often render it after sign-in).
   function setupHeader() {
     if (headerEl && document.body.contains(headerEl)) return;
-    headerEl = document.querySelector(headerSel || '[data-einbau-header], header, .header, .app-header');
+    headerEl = findHeader();
     if (!headerEl) return;
-    if (getComputedStyle(headerEl).position === 'static') headerEl.style.position = 'relative';
-    headerEl.style.isolation = 'isolate'; // behind the header's text and buttons
     var hb = Math.max(0, headerEl.getBoundingClientRect().bottom).toFixed(0) + 'px';
     document.querySelectorAll('.ef-web.tl, .ef-web.tr').forEach(function (w) { w.style.top = hb; });
     var logo = headerEl.querySelector(LOGO_SEL);
     var avoid = logo ? logo.getBoundingClientRect().right - headerEl.getBoundingClientRect().left + 140 : 0;
-    batsInto(headerEl, Math.round(rnd(3, 6)), [28, 50], avoid);
+    if (piece('bats')) batsInto(headerEl, Math.round(rnd(3, 6)), [28, 50], avoid);
   }
 
+  // Lights and snow go in the app's header. A page with no header (some login
+  // screens) gets a strip across the top of the window until one turns up.
+  var topHost = null;
+  function dressTop(host) {
+    if (piece('lights')) lights(host);
+    if (piece('snow')) fallingSnow(host);
+  }
+  function setupTop() {
+    var h = findHeader();
+    var band = document.querySelector('body > .ef-band');
+    if (h) {
+      if (h === topHost) return;
+      if (band) band.parentNode.removeChild(band);
+      topHost = h;
+      dressTop(h);
+    } else if (!topHost || !document.body.contains(topHost)) {
+      topHost = document.createElement('div');
+      topHost.className = 'ef-band';
+      topHost.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(topHost);
+      dressTop(topHost);
+    }
+  }
+  function redoLights() { if (topHost && piece('lights')) lights(topHost); }
+
   function sprinkle() {
-    retag();
+    if (piece('tag')) retag();
+    if (season() === 'christmas') {
+      setupTop();
+      if (piece('drifts')) {
+        drifts('.btn, button, [role="button"]', 5, 50, [0.45, 0.85], 120, [5, 9]);
+        drifts('.card, .panel, [data-einbau-card], .login-card', 3, 160, [0.18, 0.4], 260, [8, 15]);
+      }
+      return;
+    }
     if (season() !== 'halloween') return;
     setupHeader();
+    if (!piece('webs')) return;
     document.querySelectorAll('[data-einbau-web]').forEach(function (el, i) {
       var c = el.getAttribute('data-einbau-web');
       miniWeb(el, CORNERS.indexOf(c) >= 0 ? c : 'tr', Math.round(rnd(18, 27)), yearSeed() + 200 + i);
@@ -332,21 +577,20 @@
   var initialised = false;
   function init(opts) {
     if (initialised) return;
-    var s = season();
+    initialised = true;
     injectCss();
     if (!reduced) document.documentElement.classList.add('ef-anim');
-    if (!s) return;
-    initialised = true;
+    headerSel = opts && opts.header;
     var go = function () {
+      var s = season();
       if (s === 'halloween') {
         var bottomZ = opts && typeof opts.bottomZ === 'number' ? String(opts.bottomZ) : null;
-        headerSel = opts && opts.header;
         // Window corners: the same four webs on every page and app (seeded per
         // corner), each a little different; top ones start under the header so
         // they never cover the app name; no spiders at the bottom.
         CORNERS.forEach(function (c, i) {
           var top = c === 'tl' || c === 'tr';
-          if (top && opts && opts.topWebs === false) return;
+          if (!piece('webs') || (top && opts && opts.topWebs === false)) return;
           var R = seeded(yearSeed() + i * 17);
           var size = Math.round(88 + R() * 56); // 20% smaller than before
           var d = document.createElement('div');
@@ -359,7 +603,7 @@
         });
         // Footer bats live at the very bottom of the page (scroll to find them),
         // never over the form.
-        if (!opts || opts.bottom !== false) {
+        if (piece('bats') && (!opts || opts.bottom !== false)) {
           var foot = document.createElement('div');
           foot.className = 'ef-footer';
           foot.setAttribute('aria-hidden', 'true');
@@ -369,27 +613,23 @@
         sprinkle();
         watchForNewScreens();
       } else if (s === 'christmas') {
-        var snow = document.createElement('div');
-        snow.className = 'ef-snow';
-        snow.setAttribute('aria-hidden', 'true');
-        var n = reduced ? 0 : 28;
-        for (var i = 0; i < n; i++) {
-          var f = document.createElement('div');
-          f.className = 'ef-flake';
-          f.textContent = '❄';
-          f.style.left = rnd(0, 100) + '%';
-          f.style.fontSize = rnd(8, 16).toFixed(0) + 'px';
-          f.style.animationDuration = rnd(9, 20).toFixed(1) + 's';
-          f.style.animationDelay = (-rnd(0, 20)).toFixed(1) + 's';
-          f.style.setProperty('--ef-dx', rnd(-40, 40).toFixed(0) + 'px');
-          snow.appendChild(f);
-        }
-        document.body.appendChild(snow);
         sprinkle();
         watchForNewScreens();
+        var t = null, width = 0;
+        var refit = function () {
+          if (!topHost || topHost.clientWidth === width) return;
+          width = topHost.clientWidth;
+          clearTimeout(t);
+          t = setTimeout(redoLights, 150);
+        };
+        window.addEventListener('resize', refit);
+        if (window.ResizeObserver) new ResizeObserver(refit).observe(document.documentElement); // scrollbars come and go
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(redoLights); // the header's text may shift
       }
     };
-    if (document.body) go(); else document.addEventListener('DOMContentLoaded', go);
+    loadCfg(function () {
+      if (document.body) go(); else document.addEventListener('DOMContentLoaded', go);
+    });
   }
 
   // A loading animation in `el` (replaces its contents). Returns controls.
@@ -401,7 +641,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'ef-loader is-working';
     wrap.setAttribute('role', 'status');
-    wrap.innerHTML = '<div style="width:' + size + 'px">' + creature(season()) + '</div><div class="ef-text"></div>';
+    wrap.innerHTML = '<div style="width:' + size + 'px">' + creature(piece('costume') ? season() : null) + '</div><div class="ef-text"></div>';
     var text = wrap.querySelector('.ef-text');
     text.textContent = opts.text || phrase();
     el.innerHTML = '';
@@ -418,12 +658,12 @@
   }
 
   window.EinbauFestive = {
-    version: '2026-10-28c',
+    version: '2026-11-06b',
     season: season,
     init: init,
     loader: loader,
     phrase: phrase,
-    creatureSvg: function () { return creature(season()); },
+    creatureSvg: function () { return creature(piece('costume') ? season() : null); },
     // Put a small cobweb in a corner of one element yourself (Halloween only).
     web: function (el, corner) { if (season() === 'halloween') { injectCss(); miniWeb(el, corner || 'tr', 24); } },
     // Drop / bring back every decoration (e.g. hide on sub-screens to cut clutter).
