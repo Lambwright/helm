@@ -34,7 +34,9 @@ export default function ErpRecord({ projectId, type, id, onNotFound, onShowAll, 
 
   const typeInfo = ERP_TYPES.find((t) => t.id === type);
   const label = row.number ?? `#${row.id}`;
-  const linked = !!row.originId;
+  // A Direct Cost can be locked with no ID on it, so `synced` counts as linked too.
+  const linked = !!row.originId || !!row.synced;
+  const erpText = row.originId ? `Linked: ${row.originId}` : linked ? "Locked, with no NetSuite ID" : "Not linked";
   const value = (originId ?? row.lastOriginId ?? "").trim();
   const busy = stage === "checking" || stage === "running";
   const ready = reason.trim().length >= 3 && (linked || ID_RE.test(value));
@@ -78,7 +80,7 @@ export default function ErpRecord({ projectId, type, id, onNotFound, onShowAll, 
       const out = await changeErpLinks(projectId, type, reason.trim(), [change]);
       const r = out.results[0];
       if (r.ok) {
-        setResult({ ok: true, message: linked ? "Unlocked. Procore confirms the link is gone." : `Locked to ${value}. Procore confirms it saved.` });
+        setResult({ ok: true, message: linked ? "Unlocked. Reload the Procore page to see it." : `Locked to ${value}. Reload the Procore page to see it.` });
         setReason("");
         setOriginId(null);
         await load();
@@ -104,7 +106,7 @@ export default function ErpRecord({ projectId, type, id, onNotFound, onShowAll, 
           {row.title && <><dt>Name</dt><dd>{row.title}</dd></>}
           {money(row.amount) !== "—" && <><dt>Total</dt><dd>{money(row.amount)}</dd></>}
           {row.status && <><dt>Status</dt><dd className="panel-cap">{row.status}</dd></>}
-          <dt>ERP</dt><dd>{linked ? `Linked: ${row.originId}` : "Not linked"}</dd>
+          <dt>ERP</dt><dd>{erpText}</dd>
         </dl>
       </section>
 
@@ -138,7 +140,7 @@ export default function ErpRecord({ projectId, type, id, onNotFound, onShowAll, 
       ) : (
         <div className="panel-confirm" role="group" aria-label="Confirm ERP link change">
           {linked ? (
-            <p>Unlock <strong>{label}</strong> from NetSuite ID {row.originId}? Once unlocked, edits in Procore can stop it matching NetSuite.</p>
+            <p>Unlock <strong>{label}</strong>{row.originId ? ` from NetSuite ID ${row.originId}` : ""}? Once unlocked, edits in Procore can stop it matching NetSuite.</p>
           ) : (
             <p>Lock <strong>{label}</strong> to NetSuite ID <strong>{value}</strong>? A wrong ID ties it to the wrong transaction.</p>
           )}
