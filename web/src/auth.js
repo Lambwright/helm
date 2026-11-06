@@ -43,11 +43,12 @@ const LOGIN_ERROR_MESSAGES = {
   invalid_request: "Enter a username and password.",
 };
 
-export async function login(username, password) {
+// remember: a 14-day token instead of 8 hours, for the Procore panel.
+export async function login(username, password, remember = false) {
   const res = await fetch(`${AUTH_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, ...(remember ? { remember: true } : {}) }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.token) {

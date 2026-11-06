@@ -30,6 +30,7 @@ export default function ProcorePanel() {
   const [context, setContext] = useState(null);
   const [waited, setWaited] = useState(false);
   const [tab, setTab] = useState(null); // null = the page's default
+  const [showLogin, setShowLogin] = useState(false);
   const lastThemeCheck = useRef(0);
 
   const signedIn = useCallback((u) => {
@@ -84,10 +85,25 @@ export default function ProcorePanel() {
   }, [recheckTheme]);
 
   if (authState === "checking") return <div className="panel"><Loading /></div>;
-  if (authState === "out") return <LoginScreen onLoggedIn={signedIn} />;
+  // Most people in Procore have no use for this panel and it can't be hidden from them, so
+  // nobody gets a login form unless they ask for one. Procore doesn't say who's looking, so
+  // this line is the same for everyone. The 14-day session means a one-off sign-in sticks.
+  if (authState === "out") {
+    if (showLogin) return <LoginScreen onLoggedIn={signedIn} remember />;
+    return (
+      <PanelPage>
+        <p className="panel-quiet">Einbau tools are for approved users.</p>
+        <button className="panel-link" onClick={() => setShowLogin(true)}>Sign in</button>
+      </PanelPage>
+    );
+  }
 
-  // The screen only decides what to offer. The worker enforces the same permission.
-  const canChangeErp = !!user?.appExtras?.TALLY?.includes("erp_link");
+  // The screen only decides what to offer. The worker enforces the same rules:
+  // canAttachToDirectCost and canManageErpLinks, behind TALLY access.
+  const { canAttach, canChangeErp } = panelAccess(user);
+  if (!canAttach && !canChangeErp) {
+    return <PanelPage><p className="panel-quiet">Nothing here for you to do.</p></PanelPage>;
+  }
   const onDirectCosts = !!context && isDirectCostView(context.view);
   const dcOpen = onDirectCosts && !!context.recordId;
 
@@ -100,10 +116,10 @@ export default function ProcorePanel() {
       : <Loading />;
   } else {
     const tabs = [
-      ...(onDirectCosts ? [{ key: "attach", label: "Attach files" }] : []),
+      ...(onDirectCosts && canAttach ? [{ key: "attach", label: "Attach files" }] : []),
       ...(canChangeErp ? [{ key: "erp", label: "ERP links" }] : []),
     ];
-    const active = tabs.some((t) => t.key === tab) ? tab : dcOpen || !canChangeErp ? "attach" : "erp";
+    const active = tabs.some((t) => t.key === tab) ? tab : (dcOpen && canAttach) || !canChangeErp ? "attach" : "erp";
     let content;
     if (active === "erp") {
       content = <ErpLinks projectId={context.projectId} view={context.view} openRecordId={context.recordId} onSignedOut={signedOut} />;
@@ -129,15 +145,31 @@ export default function ProcorePanel() {
       </>
     );
   }
+  return <PanelPage>{body}</PanelPage>;
+}
+
+function PanelPage({ children }) {
   return (
     <div className="panel-page">
       <header className="panel-header">
         <span className="panel-header-name">Einbau tools</span>
         <span className="panel-header-sub">An Einbau Product</span>
       </header>
-      <main className="panel">{body}</main>
+      <main className="panel">{children}</main>
     </div>
   );
+}
+
+// Mirrors TALLY's worker: its levels come from appRoles.TALLY, anything else is no access, and
+// a TALLY admin can attach but still needs erp_link for ERP changes.
+function panelAccess(user) {
+  const level = user?.apps?.includes("TALLY") ? user?.appRoles?.TALLY : null;
+  const hasTally = level === "admin" || level === "submitter";
+  const extras = Array.isArray(user?.appExtras?.TALLY) ? user.appExtras.TALLY : [];
+  return {
+    canAttach: level === "admin" || (level === "submitter" && extras.includes("dc_attach")),
+    canChangeErp: hasTally && extras.includes("erp_link"),
+  };
 }
 
 function DirectCostAttach({ projectId, id, onSignedOut }) {
