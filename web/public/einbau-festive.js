@@ -13,6 +13,10 @@
  *   "An Einbau Product" anywhere on the page reads "A Spooky Einbau Product"
  *   (Halloween) / "A Festive Einbau Product" (Christmas).
  *   const l = EinbauFestive.loader(el, { size })  // anything loading → l.done() / l.stalled() / l.remove()
+ *     l.meter(text)   — a small line under the loading text (e.g. API calls used)
+ *     l.strain(0–3)   — sweating + frantic typing as an app's API calls run low
+ *     l.dead(text) / l.revive() — out of calls: he keels over (X eyes, error on
+ *                       screen; snow on him at Christmas, a web and a crow at Halloween)
  *   EinbauFestive.phrase()                        // a loading line for the season, if you need text only
  *   EinbauFestive.phrase({ short: true })         // one word, for tiny buttons ("Boo…", "Wrapping…")
  *
@@ -192,6 +196,40 @@
         + '<circle cx="86" cy="62" r="6" fill="#F4F4F4"/>'; // santa hat
       monitorExtra = '<path d="M114 44 q8 -6 16 0 q8 6 16 0 q8 -6 16 0 q8 6 16 0" stroke="#2E8B57" stroke-width="3" fill="none"/><circle cx="122" cy="44" r="2" fill="#E74C3C"/><circle cx="138" cy="44" r="2" fill="#F1C40F"/><circle cx="154" cy="44" r="2" fill="#3498DB"/><circle cx="170" cy="44" r="2" fill="#E74C3C"/>';
     }
+    // Out of calls (LEDGER's rate meter, 2026-11-19): he keels over backwards
+    // and lies on the floor (.ef-char rotates about his back foot), X'd-out
+    // eyes, the screen shows the error, and the season leaves its mark on him:
+    // snow piled up at Christmas, a cobweb and a crow at Halloween.
+    var deadExtra = '';
+    if (costume === 'christmas') {
+      deadExtra = '<g class="ef-dead-only">'
+        + '<path d="M22 70 Q25 62 31 64 Q36 58 42 62 Q47 57 52 61 Q57 46 62 60 Q66 56 71 70 Z" fill="#F4F8FB"/>'          // snow on him (and his raised arm)
+        + '<path d="M2 108 Q14 100 26 104 Q36 99 46 104 Q60 100 76 106 L76 108 Z" fill="#F4F8FB" opacity=".9"/>'         // drift beside him
+        + '<path d="M112 47 Q120 40 130 44 Q140 39 150 44 Q162 40 172 44 Q182 41 188 47 Z" fill="#F4F8FB"/>'           // snow cap on the monitor
+        + '<circle cx="40" cy="58" r="1.6" fill="#fff"/><circle cx="58" cy="52" r="1.3" fill="#fff"/><circle cx="18" cy="74" r="1.4" fill="#fff"/>'
+        + '</g>';
+    } else if (costume === 'halloween') {
+      deadExtra = '<g class="ef-dead-only">'
+        // a web strung from his head down to the floor
+        + '<path d="M26 70 L4 108 M26 70 L12 108 M26 70 L20 108 M26 70 L6 94 M26 70 L2 80" stroke="#E8E6E0" stroke-width=".7" fill="none" opacity=".85"/>'
+        + '<path d="M19 82 Q14 84 11 82 M15 89 Q10 92 6 89 M12 97 Q8 101 4 97 M22 76 Q18 77 16 75" stroke="#E8E6E0" stroke-width=".7" fill="none" opacity=".85"/>'
+        + '<path d="M68 70 L84 100 M66 76 L82 100" stroke="#E8E6E0" stroke-width=".6" fill="none" opacity=".7"/>'
+        // the crow, perched on top of him
+        + '<g class="ef-crow" transform="translate(28 50)">'
+        + '<path d="M1 12 L6 9 Q8 5 13 5 Q17 4 18 7 Q19 11 15 13 L9 15 Z" fill="#141414"/>'                                   // body
+        + '<path d="M1 12 L-5 11 L-3 14 L-6 16 L2 15 Z" fill="#141414"/>'                                                    // tail
+        + '<path d="M7 9 Q10 6 14 8 Q11 12 7 11 Z" fill="#2B2B2B"/>'                                                         // wing
+        + '<circle cx="16.5" cy="5" r="3.2" fill="#141414"/>'                                                                 // head
+        + '<path d="M19 4.2 L23.5 5.4 L19 6.6 Z" fill="#E0A030"/>'                                                            // beak
+        + '<circle cx="17.2" cy="4.4" r="0.9" fill="#F2D35B"/>'                                                               // eye
+        + '<path d="M10 14.5 L10 18 M13 14 L13.5 18" stroke="#141414" stroke-width="1.1"/>'                                   // legs
+        + '</g></g>';
+    }
+    // Sweat as the hour's calls run low: up to three drops off his forehead.
+    var sweat = '<g class="ef-sweat">'
+      + [[30, 64], [74, 63], [52, 58]].map(function (p, i) {
+        return '<path class="ef-drop d' + (i + 1) + '" d="M' + p[0] + ' ' + p[1] + ' q-2.6 4 0 5.2 q2.6 -1.2 0 -5.2 Z" fill="#8FD3FF" stroke="#4FA8D8" stroke-width=".5"/>';
+      }).join('') + '</g>';
     return '<svg class="ef-cc" viewBox="0 0 200 124" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Working on it">'
       + '<rect x="0" y="108" width="200" height="2" fill="#3A3733"/>'
       + '<rect x="112" y="46" width="76" height="62" rx="5" fill="#CDBF9F"/><rect x="112" y="102" width="76" height="6" fill="#B3A583"/>'
@@ -200,14 +238,21 @@
       + [60, 67, 74, 81].map(function (y, i) { return '<rect class="ef-line l' + (i + 1) + '" x="124" y="' + y + '" width="50" height="3" fill="' + screen + '"/>'; }).join('')
       + '<rect class="ef-cursor" x="124" y="88" width="6" height="4" fill="' + screen + '"/></g>'
       + '<polyline class="ef-check" points="135,76 146,88 166,64" fill="none" stroke="' + screen + '" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'
+      // the out-of-calls screen
+      + '<g class="ef-err"><rect x="119" y="53" width="62" height="43" rx="3" fill="#2A0909"/>'
+      + '<text x="150" y="76" text-anchor="middle" font-family="monospace" font-size="17" font-weight="700" fill="#FF5A5A">429</text>'
+      + '<text x="150" y="88" text-anchor="middle" font-family="monospace" font-size="6.2" fill="#FF8A8A">OUT OF CALLS</text></g>'
       + monitorExtra
       + '<rect x="82" y="100" width="48" height="8" rx="1.5" fill="#CDBF9F"/><g fill="#8E8268"><rect x="86" y="102" width="5" height="2"/><rect x="94" y="102" width="5" height="2"/><rect x="102" y="102" width="5" height="2"/><rect x="110" y="102" width="5" height="2"/><rect x="118" y="102" width="5" height="2"/></g>'
       + '<g class="ef-char"><rect x="42" y="100" width="30" height="8" rx="2" fill="' + legs + '"/>'
       + '<rect x="32" y="62" width="40" height="42" rx="6" fill="' + body + '"/>'
       + '<rect class="ef-eye" x="41" y="72" width="6" height="10" rx="1.5" fill="#2A1A12"/><rect class="ef-eye" x="56" y="72" width="6" height="10" rx="1.5" fill="#2A1A12"/>'
+      + '<path class="ef-xeye" d="M40 73 L48 81 M48 73 L40 81 M55 73 L63 81 M63 73 L55 81" stroke="#2A1A12" stroke-width="2.2" stroke-linecap="round"/>'
       + extra
       + '<rect class="ef-arm ef-arm-a" x="68" y="86" width="15" height="5" rx="2.5" fill="' + body + '"/><circle class="ef-arm ef-arm-a" cx="84" cy="88.5" r="3" fill="' + hands + '"/>'
-      + '<rect class="ef-arm ef-arm-b" x="68" y="93" width="19" height="5" rx="2.5" fill="' + bodyDark + '"/><circle class="ef-arm ef-arm-b" cx="88" cy="95.5" r="3" fill="' + hands + '"/></g>'
+      + '<rect class="ef-arm ef-arm-b" x="68" y="93" width="19" height="5" rx="2.5" fill="' + bodyDark + '"/><circle class="ef-arm ef-arm-b" cx="88" cy="95.5" r="3" fill="' + hands + '"/>'
+      + sweat + '</g>'
+      + deadExtra
       + '<text class="ef-question" x="62" y="52" font-size="20" font-weight="700" fill="#D1A93F">?</text>'
       + '</svg>';
   }
@@ -257,7 +302,40 @@
     + '.ef-loader.is-done .ef-line,.ef-loader.is-done .ef-cursor{opacity:0;animation:none}.ef-loader.is-done .ef-check{opacity:1}'
     + '.ef-loader.is-done .ef-arm-a,.ef-loader.is-done .ef-arm-b,.ef-loader.is-done .ef-char{animation:none}'
     + '.ef-loader.is-stalled .ef-line,.ef-loader.is-stalled .ef-cursor,.ef-loader.is-stalled .ef-arm-a,.ef-loader.is-stalled .ef-arm-b,.ef-loader.is-stalled .ef-char{animation:none}'
-    + '.ef-loader.is-stalled .ef-question{opacity:1}';
+    + '.ef-loader.is-stalled .ef-question{opacity:1}'
+    // Rate meter (LEDGER, 2026-11-19): l.strain(0–3) sweats and types faster
+    // as an app's API calls run low; l.dead(msg) when they've run out.
+    + '.ef-meter{font-size:10px;letter-spacing:.02em;opacity:.8;font-variant-numeric:tabular-nums}'
+    + '.ef-meter:empty{display:none}'
+    + '.ef-loader.ef-strain-2 .ef-meter,.ef-loader.ef-strain-3 .ef-meter{color:#D1A93F;opacity:1}'
+    + '.ef-loader.is-dead .ef-meter{color:#FF7A6A;opacity:1}'
+    + '.ef-drop,.ef-xeye,.ef-err,.ef-dead-only{opacity:0}'
+    + '.ef-strain-1 .ef-drop.d1,.ef-strain-2 .ef-drop.d1,.ef-strain-2 .ef-drop.d2,.ef-strain-3 .ef-drop{opacity:1}'
+    + '.ef-anim .ef-strain-1 .ef-drop.d1,.ef-anim .ef-strain-2 .ef-drop.d1,.ef-anim .ef-strain-2 .ef-drop.d2,.ef-anim .ef-strain-3 .ef-drop{animation:ef-drip 1.2s ease-in infinite}'
+    + '.ef-anim .ef-strain-3 .ef-drop{animation-duration:.8s}'
+    + '.ef-anim .ef-loader .ef-drop.d2{animation-delay:-.45s}.ef-anim .ef-loader .ef-drop.d3{animation-delay:-.8s}'
+    + '@keyframes ef-drip{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(12px);opacity:0}}'
+    + '.ef-anim .ef-strain-1 .ef-arm-a,.ef-anim .ef-strain-1 .ef-arm-b{animation-duration:.19s}'
+    + '.ef-anim .ef-strain-2 .ef-arm-a,.ef-anim .ef-strain-2 .ef-arm-b{animation-duration:.13s}'
+    + '.ef-anim .ef-strain-3 .ef-arm-a,.ef-anim .ef-strain-3 .ef-arm-b{animation-duration:.08s}'
+    + '.ef-anim .ef-strain-2 .ef-line{animation-duration:1s}.ef-anim .ef-strain-3 .ef-line{animation-duration:.55s}'
+    + '.ef-anim .ef-strain-3 .ef-cursor{animation-duration:.25s}'
+    + '.ef-anim .ef-strain-3 .ef-char{animation:ef-jitter .18s linear infinite}'
+    + '@keyframes ef-jitter{0%,100%{transform:translate(0,0)}25%{transform:translate(-.6px,-.4px)}50%{transform:translate(.5px,.3px)}75%{transform:translate(-.3px,.5px)}}'
+    // Out of calls: he keels over backwards onto the floor (rotating about his
+    // back foot, in the drawing's own coordinates), eyes X'd, screen red.
+    + '.ef-char{transform-box:view-box;transform-origin:32px 108px}'
+    + '.ef-loader.is-dead .ef-char{animation:none;transform:translate(40px,0) rotate(-90deg)}'
+    + '.ef-anim .ef-loader.is-dead .ef-char{animation:ef-keel .9s cubic-bezier(.55,0,.75,.2) both}'
+    + '@keyframes ef-keel{0%{transform:translate(0,0) rotate(0)}55%{transform:translate(22px,0) rotate(-58deg)}80%{transform:translate(40px,0) rotate(-96deg)}90%{transform:translate(40px,-2px) rotate(-86deg)}100%{transform:translate(40px,0) rotate(-90deg)}}'
+    + '.ef-loader.is-dead .ef-eye,.ef-loader.is-dead .ef-drop,.ef-loader.is-dead .ef-screen,.ef-loader.is-dead .ef-check,.ef-loader.is-dead .ef-question{opacity:0;animation:none}'
+    + '.ef-loader.is-dead .ef-arm-a,.ef-loader.is-dead .ef-arm-b{animation:none}'
+    + '.ef-loader.is-dead .ef-xeye,.ef-loader.is-dead .ef-err{opacity:1}'
+    + '.ef-loader.is-dead .ef-dead-only{opacity:1;transition:opacity .6s ease .9s}'
+    + '.ef-anim .ef-loader.is-dead .ef-err text{animation:ef-blink 1.1s steps(1) infinite}'
+    + '.ef-anim .ef-loader.is-dead .ef-crow{animation:ef-peck 3.2s ease-in-out 1.6s infinite}'
+    + '@keyframes ef-peck{0%,80%,100%{transform:translate(28px,50px) rotate(0)}86%{transform:translate(29px,51px) rotate(12deg)}92%{transform:translate(28px,50px) rotate(0)}}'
+    + '.ef-crow{transform-box:view-box;transform-origin:38px 66px}';
 
   function injectCss() {
     if (document.getElementById('ef-css')) return;
@@ -641,24 +719,42 @@
     var wrap = document.createElement('div');
     wrap.className = 'ef-loader is-working';
     wrap.setAttribute('role', 'status');
-    wrap.innerHTML = '<div style="width:' + size + 'px">' + creature(piece('costume') ? season() : null) + '</div><div class="ef-text"></div>';
+    wrap.innerHTML = '<div style="width:' + size + 'px">' + creature(piece('costume') ? season() : null) + '</div><div class="ef-text"></div><div class="ef-meter"></div>';
     var text = wrap.querySelector('.ef-text');
+    var meter = wrap.querySelector('.ef-meter');
     text.textContent = opts.text || phrase();
     el.innerHTML = '';
     el.appendChild(wrap);
     var timer = opts.text ? null : setInterval(function () { text.textContent = phrase(); }, 2600);
     function stop() { if (timer) clearInterval(timer); timer = null; }
+    var strainLevel = 0, isDead = false;
+    function setState(base) {
+      wrap.className = 'ef-loader ' + base + (isDead ? ' is-dead' : (strainLevel ? ' ef-strain-' + strainLevel : ''));
+    }
     return {
       element: wrap,
-      done: function (msg) { stop(); wrap.className = 'ef-loader is-done'; if (msg) text.textContent = msg; },
-      stalled: function (msg) { stop(); wrap.className = 'ef-loader is-stalled'; if (msg) text.textContent = msg; },
+      done: function (msg) { stop(); isDead = false; strainLevel = 0; setState('is-done'); if (msg) text.textContent = msg; },
+      stalled: function (msg) { stop(); setState('is-stalled'); if (msg) text.textContent = msg; },
       setText: function (msg) { stop(); text.textContent = msg; },
+      // A small line under the text, e.g. "412 of 600 Procore calls this hour".
+      meter: function (msg) { meter.textContent = msg || ''; },
+      // 0 = calm, 1–3 = sweating and typing faster as an app's API calls run low.
+      strain: function (level) {
+        strainLevel = Math.max(0, Math.min(3, Math.round(level) || 0));
+        if (!isDead) setState('is-working');
+      },
+      // Out of calls: he keels over. msg (e.g. when they come back) goes under him.
+      dead: function (msg) {
+        if (!isDead) { isDead = true; setState('is-working'); }
+        if (msg != null) meter.textContent = msg;
+      },
+      revive: function () { if (isDead) { isDead = false; setState('is-working'); } },
       remove: function () { stop(); if (wrap.parentNode) wrap.parentNode.removeChild(wrap); },
     };
   }
 
   window.EinbauFestive = {
-    version: '2026-11-06b',
+    version: '2026-11-19',
     season: season,
     init: init,
     loader: loader,
