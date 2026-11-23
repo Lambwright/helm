@@ -27,7 +27,7 @@ const OUTCOME_LABELS = {
   rate_limited: "Locked out",
   no_app_access: "No app access",
   missing_token: "Not signed in",
-  invalid_signature: "Forged/garbled session",
+  invalid_signature: "Invalid session",
   expired: "Session expired",
   revoked: "Session revoked",
   unauthorized: "Bad server key",
@@ -190,7 +190,7 @@ export default function Security({ onToast, onUnauthorized }) {
                 <tr key={i}>
                   <td className="mono" style={{ whiteSpace: "nowrap" }} title={e.ts}>{when(e.ts)}</td>
                   <td>
-                    <Pill level={e.type === "admin" ? "info" : e.outcome === "success" ? "ok" : e.outcome === "expired" ? "info" : "medium"}>{outcomeLabel(e)}</Pill>
+                    <Pill level={e.type === "admin" ? "info" : e.outcome === "success" ? "ok" : ["expired", "missing_token", "no_token"].includes(e.outcome) ? "info" : "medium"}>{outcomeLabel(e)}</Pill>
                     <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{e.type}{e.app ? ` · ${e.app}` : ""}</div>
                   </td>
                   <td className="mono" style={{ fontSize: 11 }}>{e.username || "—"}</td>
