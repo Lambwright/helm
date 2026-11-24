@@ -292,6 +292,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .sec-pill.pill-warn { color: var(--yellow); border: 1px solid var(--yellow); }
 .sec-pill.pill-ok { background: var(--green-light); color: var(--green); }
 .sec-pill.pill-info { color: var(--text-secondary); border: 1px solid var(--border-color); }
+.sec-sources { display: flex; flex-direction: column; gap: 4px; }
+.sec-source { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 7px 10px; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--text-primary); font: inherit; cursor: pointer; overflow: hidden; }
+.sec-source:hover, .sec-source.active { border-color: var(--border-color); background: var(--bg-page); }
+.sec-source-bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(var(--accent-rgb), 0.1); pointer-events: none; }
+.sec-source-main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sec-source-place { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec-source-org { font-weight: 400; color: var(--text-secondary); }
+.sec-source-ip { font-size: 10px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec-source-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.sec-source-kind { font-size: 10px; color: var(--text-secondary); }
+.sec-source-kind + .sec-source-kind::before { content: "· "; }
+.sec-source-n { position: relative; font-size: 15px; font-weight: 600; min-width: 28px; text-align: right; }
+.sec-filter-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 4px 2px 8px; border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-secondary); }
+.sec-filter-chip button { border: none; background: none; color: var(--text-secondary); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 4px; }
 .sec-bars { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
 .sec-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
 .sec-bar-stack { flex: 1; width: 60%; display: flex; flex-direction: column; justify-content: flex-end; }

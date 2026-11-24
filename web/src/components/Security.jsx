@@ -37,6 +37,7 @@ const OUTCOME_LABELS = {
   forbidden: "Not allowed",
   bad_service_key: "Bad server key",
   other: "Refused",
+  refused: "Blocked", // type "block"
 };
 
 const ALERT_LABELS = { blocked: "Address blocked", decoy: "Decoy touched", probe_trusted: "Probing (trusted address)" };
@@ -65,6 +66,8 @@ export default function Security({ onToast, onUnauthorized }) {
   const [blocks, setBlocks] = useState([]);
   const [unblocking, setUnblocking] = useState(null);
   const [filter, setFilter] = useState("failures"); // all | failures | login | admin
+  const [ipFilter, setIpFilter] = useState(null); // null = every address; "" = no address recorded
+  const eventsRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const unauthorized = useRef(onUnauthorized);
@@ -77,19 +80,26 @@ export default function Security({ onToast, onUnauthorized }) {
     setError(null);
     Promise.all([
       api.securitySummary(7),
-      api.securityEvents({ ...eventQuery(filter), limit: 150 }),
+      api.securityEvents({ ...eventQuery(filter), ...(ipFilter !== null ? { ip: ipFilter } : {}), limit: 150 }),
       api.securityTraffic(),
       api.securityBlocks().catch(() => ({ blocks: [] })), // older worker: no blocks yet
     ])
       .then(([s, e, t, b]) => {
         setSummary(s);
-        setEvents(e.events || []);
+        // Filter here too, so it works before the worker supports { ip }.
+        setEvents((e.events || []).filter((x) => ipFilter === null || (x.ip || "") === ipFilter));
         setTraffic(t);
         setBlocks(b.blocks || []);
       })
       .catch((e) => (e.unauthorized ? unauthorized.current() : setError(e.message)))
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, ipFilter]);
+
+  const showAddress = (ip) => {
+    setIpFilter(ip);
+    setFilter("all");
+    eventsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   useEffect(load, [load]);
 
@@ -209,28 +219,54 @@ export default function Security({ onToast, onUnauthorized }) {
         <div className="card">
           <div className="card-title">Top sources of refused attempts (7 days)</div>
           {summary?.sources?.length ? (
-            <table className="table">
-              <thead><tr><th>IP</th><th>Where</th><th>Network</th><th>#</th></tr></thead>
-              <tbody>
-                {summary.sources.map((s) => (
-                  <tr key={s.ip || "none"}>
-                    <td className="mono">{s.ip || "—"}</td>
-                    <td style={{ color: s.country && !COUNTRY_HOME.includes(s.country) ? "var(--red)" : undefined }}>{place(s)}</td>
-                    <td style={{ fontSize: 11, color: "var(--text-secondary)" }}>{s.org || ""}</td>
-                    <td className="mono">{s.n}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="sec-sources">
+              {summary.sources.map((s) => {
+                const max = summary.sources[0].n || 1;
+                const blocked = blocks.some((b) => b.active && b.ip === s.ip);
+                const kinds = [...new Set(String(s.outcomes || "").split(",").filter(Boolean).map((o) => OUTCOME_LABELS[o] || o))];
+                return (
+                  <button
+                    key={s.ip || "none"}
+                    className={`sec-source ${ipFilter === (s.ip || "") ? "active" : ""}`}
+                    onClick={() => showAddress(s.ip || "")}
+                    title={`${s.ip || "No address recorded"}${s.org ? ` · ${s.org}` : ""}\nLast: ${when(s.last)}\nClick to see its events`}
+                  >
+                    <span className="sec-source-bar" style={{ width: `${(s.n / max) * 100}%` }} />
+                    <span className="sec-source-main">
+                      <span className="sec-source-place" style={{ color: s.country && !COUNTRY_HOME.includes(s.country) ? "var(--red)" : undefined }}>
+                        {s.ip ? place(s) : "No address"}
+                        {s.org && <span className="sec-source-org"> · {s.org}</span>}
+                      </span>
+                      <span className="sec-source-ip mono">{s.ip || "server-to-server, no visitor address"}</span>
+                      <span className="sec-source-tags">
+                        {blocked && <Pill level="high">Blocked</Pill>}
+                        {!!s.trusted && <Pill level="ok">Staff network</Pill>}
+                        {kinds.slice(0, 2).map((k) => <span key={k} className="sec-source-kind">{k}</span>)}
+                        {kinds.length > 2 && <span className="sec-source-kind">+{kinds.length - 2}</span>}
+                      </span>
+                    </span>
+                    <span className="sec-source-n mono">{s.n}</span>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <div className="field-help">None.</div>
           )}
         </div>
       </div>
 
-      <div className="card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div className="card-title" style={{ marginBottom: 0 }}>Events</div>
+      <div className="card" ref={eventsRef}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div className="card-title" style={{ marginBottom: 0 }}>Events</div>
+            {ipFilter !== null && (
+              <span className="sec-filter-chip">
+                from <span className="mono">{ipFilter || "no address"}</span>
+                <button onClick={() => setIpFilter(null)} aria-label="Show every address">×</button>
+              </span>
+            )}
+          </div>
           <div className="tabs" style={{ marginBottom: 0 }}>
             {[["failures", "Refused / failed"], ["login", "Sign-ins"], ["admin", "Admin changes"], ["all", "All"]].map(([k, l]) => (
               <button key={k} className={`tab ${filter === k ? "active" : ""}`} style={{ fontSize: 11 }} onClick={() => setFilter(k)}>{l}</button>
