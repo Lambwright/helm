@@ -39,6 +39,7 @@ export function clearToken() {
 const LOGIN_ERROR_MESSAGES = {
   invalid_credentials: "Incorrect username or password.",
   rate_limited: "Too many attempts — try again in a few minutes.",
+  blocked: "Too many failed attempts from this network — try again later.",
   no_app_access: "Your account doesn't have access to any apps yet. Ask an admin to grant you access in HELM.",
   invalid_request: "Enter a username and password.",
 };

@@ -6,6 +6,10 @@ const AUTH_BASE = import.meta.env.DEV
   ? ""
   : import.meta.env.VITE_AUTH_API || "https://auth.ben-a90.workers.dev";
 
+// Nightly export job (svc-export). TODO: move into a worker secret.
+export const EXPORT_SERVICE_TOKEN =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdmMtZXhwb3J0QGVpbmJhdS5jYSIsIm5hbWUiOiJOaWdodGx5IGV4cG9ydCIsInJvbGUiOiJzZXJ2aWNlIiwidHYiOjEsImlhdCI6MTc5MDU1MzYwMCwib2lhdCI6MTc5MDU1MzYwMCwiZXhwIjoxOTQ4MjMzNjAwfQ.OM4tnN3rNaVezZAmCTMxXyW8IB2kEj2IFKgZlBAweM8";
+
 class UnauthorizedError extends Error {
   constructor(reason) {
     super(reason || "unauthorized");
@@ -23,6 +27,8 @@ const ADMIN_ERROR_MESSAGES = {
   cannot_change_own_role: "You can't change your own role — it would sign you out mid-edit. Use another admin account.",
   cannot_force_logout_self: "You can't force-logout your own account — use 'Sign out everywhere' in My Account instead.",
   forbidden: "Admin access required.",
+  not_blocked: "That address isn't blocked any more.",
+  blocked: "Too many failed attempts from this network — try again later.",
   invalid_current_password: "That's not your current password.",
   invalid_job_role: "That isn't a valid role.",
   invalid_role_override: "One of the per-app overrides isn't a valid role.",
@@ -88,6 +94,8 @@ export const api = {
   securitySummary: (days) => request("/auth/security/summary", { days }),
   securityEvents: (filters) => request("/auth/security/events", filters),
   securityTraffic: () => request("/auth/security/traffic"),
+  securityBlocks: () => request("/auth/security/blocks"), // { blocks: [{ip, until, level, reason, active, city, country, org}] }
+  unblockAddress: (ip) => request("/auth/security/unblock", { ip }), // Super Admin only
   linkOptions: () => request("/auth/link-options"), // { procore_user|rp_person|netsuite_employee: { list: [{id, name, email, company?}], refreshedAt } }
   setLink: (username, type, id) => request("/auth/fields/set", { username, field: type, value: id }),
   rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }

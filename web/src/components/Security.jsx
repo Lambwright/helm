@@ -39,8 +39,12 @@ const OUTCOME_LABELS = {
   other: "Refused",
 };
 
+const ALERT_LABELS = { blocked: "Address blocked", decoy: "Decoy touched", probe_trusted: "Probing (trusted address)" };
+
 function outcomeLabel(e) {
   if (e.type === "admin") return e.outcome.replace(/_/g, " ");
+  if (e.type === "block") return "Blocked address";
+  if (e.type === "alert") return ALERT_LABELS[e.outcome] || "Alert";
   return OUTCOME_LABELS[e.outcome] || e.outcome;
 }
 
@@ -58,6 +62,8 @@ export default function Security({ onToast, onUnauthorized }) {
   const [summary, setSummary] = useState(null);
   const [events, setEvents] = useState([]);
   const [traffic, setTraffic] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [unblocking, setUnblocking] = useState(null);
   const [filter, setFilter] = useState("failures"); // all | failures | login | admin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -69,17 +75,34 @@ export default function Security({ onToast, onUnauthorized }) {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    Promise.all([api.securitySummary(7), api.securityEvents({ ...eventQuery(filter), limit: 150 }), api.securityTraffic()])
-      .then(([s, e, t]) => {
+    Promise.all([
+      api.securitySummary(7),
+      api.securityEvents({ ...eventQuery(filter), limit: 150 }),
+      api.securityTraffic(),
+      api.securityBlocks().catch(() => ({ blocks: [] })), // older worker: no blocks yet
+    ])
+      .then(([s, e, t, b]) => {
         setSummary(s);
         setEvents(e.events || []);
         setTraffic(t);
+        setBlocks(b.blocks || []);
       })
       .catch((e) => (e.unauthorized ? unauthorized.current() : setError(e.message)))
       .finally(() => setLoading(false));
   }, [filter]);
 
   useEffect(load, [load]);
+
+  const unblock = (ip) => {
+    setUnblocking(ip);
+    api.unblockAddress(ip)
+      .then(() => {
+        onToast?.(`Unblocked ${ip}`);
+        load();
+      })
+      .catch((e) => (e.unauthorized ? unauthorized.current() : onToast?.(e.message, true)))
+      .finally(() => setUnblocking(null));
+  };
 
   if (loading && !summary) return <div className="card"><Loading /></div>;
   if (error && !summary) return <div className="card"><div className="login-error">{error}</div></div>;
@@ -124,7 +147,39 @@ export default function Security({ onToast, onUnauthorized }) {
             </tbody>
           </table>
         ) : (
-          <div className="field-help">Nothing needs attention. Alerts cover: 5+ failed sign-ins for one person in an hour, 10+ refused attempts from one place in an hour, any sign-in or server-key call from outside {COUNTRY_HOME.join("/")}, sign-ins from a new IP, and admin changes.</div>
+          <div className="field-help">Nothing needs attention. Alerts cover: 5+ failed sign-ins for one person in an hour, 10+ refused attempts from one place in an hour, any sign-in or server-key call from outside {COUNTRY_HOME.join("/")}, sign-ins from a new IP, admin changes, and addresses blocked for probing.</div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card-title">Blocked addresses</div>
+        {blocks.length ? (
+          <table className="table" style={{ fontSize: 12 }}>
+            <thead><tr><th>Address</th><th>Why</th><th>Until</th><th></th></tr></thead>
+            <tbody>
+              {blocks.map((b) => (
+                <tr key={b.ip}>
+                  <td title={b.org || ""}>
+                    {place(b)}
+                    <div className="mono" style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{b.ip}</div>
+                  </td>
+                  <td style={{ color: "var(--text-secondary)" }}>{b.reason}{b.level > 1 ? ` · block #${b.level}` : ""}</td>
+                  <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                    {b.active ? <Pill level="high">{when(b.until)}</Pill> : <span style={{ color: "var(--text-tertiary)" }}>ended {when(b.until)}</span>}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    {b.active && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => unblock(b.ip)} disabled={unblocking === b.ip}>
+                        {unblocking === b.ip ? "Unblocking…" : "Unblock"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="field-help">None in the last 30 days. An address is blocked for an hour after 8 invalid sessions or unknown-account sign-ins in 10 minutes, or at once if it touches a decoy; each repeat doubles the time, up to a week. Addresses someone signed in from in the last 30 days are never blocked, only alerted on.</div>
         )}
       </div>
 
@@ -190,7 +245,7 @@ export default function Security({ onToast, onUnauthorized }) {
                 <tr key={i}>
                   <td className="mono" style={{ whiteSpace: "nowrap" }} title={e.ts}>{when(e.ts)}</td>
                   <td>
-                    <Pill level={e.type === "admin" ? "info" : e.outcome === "success" ? "ok" : ["expired", "missing_token", "no_token"].includes(e.outcome) ? "info" : "medium"}>{outcomeLabel(e)}</Pill>
+                    <Pill level={e.type === "alert" ? "high" : e.type === "admin" ? "info" : e.outcome === "success" ? "ok" : ["expired", "missing_token", "no_token"].includes(e.outcome) ? "info" : "medium"}>{outcomeLabel(e)}</Pill>
                     <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{e.type}{e.app ? ` · ${e.app}` : ""}</div>
                   </td>
                   <td className="mono" style={{ fontSize: 11 }}>{e.username || "—"}</td>
