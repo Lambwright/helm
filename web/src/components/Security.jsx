@@ -40,7 +40,7 @@ const OUTCOME_LABELS = {
   refused: "Blocked", // type "block"
 };
 
-const ALERT_LABELS = { blocked: "Address blocked", decoy: "Decoy touched", probe_trusted: "Probing (trusted address)" };
+const ALERT_LABELS = { blocked: "Address blocked", decoy: "Decoy touched", probe_trusted: "Probing (trusted address)", watch: "Probing (watch)" };
 
 function outcomeLabel(e) {
   if (e.type === "admin") return e.outcome.replace(/_/g, " ");
@@ -65,6 +65,8 @@ export default function Security({ onToast, onUnauthorized }) {
   const [traffic, setTraffic] = useState(null);
   const [blocks, setBlocks] = useState([]);
   const [unblocking, setUnblocking] = useState(null);
+  const [digest, setDigest] = useState(null);
+  const [sendingDigest, setSendingDigest] = useState(false);
   const [filter, setFilter] = useState("failures"); // all | failures | login | admin
   const [ipFilter, setIpFilter] = useState(null); // null = every address; "" = no address recorded
   const eventsRef = useRef(null);
@@ -114,6 +116,17 @@ export default function Security({ onToast, onUnauthorized }) {
       .finally(() => setUnblocking(null));
   };
 
+  const sendDigest = () => {
+    setSendingDigest(true);
+    api.sendTestDigest()
+      .then((d) => {
+        setDigest(d);
+        onToast?.(d.posted ? `Digest posted to the webhook (${d.severity})` : "Digest built — set ALERT_WEBHOOK_URL to post it to Teams");
+      })
+      .catch((e) => (e.unauthorized ? unauthorized.current() : onToast?.(e.message, true)))
+      .finally(() => setSendingDigest(false));
+  };
+
   if (loading && !summary) return <div className="card"><Loading /></div>;
   if (error && !summary) return <div className="card"><div className="login-error">{error}</div></div>;
 
@@ -143,7 +156,20 @@ export default function Security({ onToast, onUnauthorized }) {
       </div>
 
       <div className="card">
-        <div className="card-title">Alerts</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div className="card-title" style={{ marginBottom: 0 }}>Alerts</div>
+          <button className="btn btn-ghost btn-sm" onClick={sendDigest} disabled={sendingDigest} title="Build the daily security digest now and post it to the alert webhook (Super Admin)">
+            {sendingDigest ? "Sending…" : "Send test digest"}
+          </button>
+        </div>
+        {digest && (
+          <div style={{ marginBottom: 12 }}>
+            <pre style={{ whiteSpace: "pre-wrap", margin: 0, padding: 10, borderRadius: 8, background: "var(--surface-2, rgba(127,127,127,0.08))", fontSize: 12, lineHeight: 1.5 }}>{digest.text}</pre>
+            <div className="field-help" style={{ marginTop: 6 }}>
+              {digest.posted ? "Posted to the alert webhook." : "Not posted — the ALERT_WEBHOOK_URL secret isn't set yet. This is what would go to Teams."}
+            </div>
+          </div>
+        )}
         {summary?.alerts?.length ? (
           <table className="table">
             <tbody>

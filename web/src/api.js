@@ -96,6 +96,7 @@ export const api = {
   securityTraffic: () => request("/auth/security/traffic"),
   securityBlocks: () => request("/auth/security/blocks"), // { blocks: [{ip, until, level, reason, active, city, country, org}] }
   unblockAddress: (ip) => request("/auth/security/unblock", { ip }), // Super Admin only
+  sendTestDigest: () => request("/auth/security/digest-now", {}), // Super Admin only; { ok, severity, posted, text, lines }
   linkOptions: () => request("/auth/link-options"), // { procore_user|rp_person|netsuite_employee: { list: [{id, name, email, company?}], refreshedAt } }
   setLink: (username, type, id) => request("/auth/fields/set", { username, field: type, value: id }),
   rateLimitStatus: (username) => request("/auth/admin/rate-limit-status", { username }), // { limited, count, limit, retryAfterSeconds }
